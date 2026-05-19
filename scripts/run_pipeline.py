@@ -1,8 +1,10 @@
 """
 Run a real arXiv paper through the full pipeline:
-  intake -> asset collection -> PDF image extraction
+  intake -> asset collection -> source enrichment -> PDF image extraction
+  -> code linking -> note scaffold -> terminology scaffold -> doubts scaffold
+  -> interview mapping scaffold
 
-Usage: uv run python scripts/run_pipeline.py [arxiv_id_or_url]
+Usage: uv run python scripts/run_pipeline.py [arxiv_id_or_url] [external_source_url ...]
 Default: 2006.11239 (DDPM paper)
 """
 
@@ -14,11 +16,17 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from paperforge.intake_agent import run_paper_intake
 from paperforge.asset_collector import run_asset_collection
+from paperforge.source_enrichment import run_source_enrichment
 from paperforge.pdf_image_extractor import run_pdf_image_extraction
-from paperforge.storage import save_job
+from paperforge.code_linker import run_code_linking
+from paperforge.note_writer import run_note_writing
+from paperforge.terminology_agent import run_terminology_scaffold
+from paperforge.doubts_agent import run_doubts_scaffold
+from paperforge.interview_mapper import run_interview_mapping_scaffold
 
 DEFAULT_INPUT = "https://arxiv.org/abs/2006.11239"
 INPUT_TEXT = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_INPUT
+EXTERNAL_SOURCE_URLS = sys.argv[2:] if len(sys.argv) > 2 else []
 
 STAGE_SEP = "\n" + "=" * 64
 
@@ -51,7 +59,15 @@ for a in job.artifacts:
     print(f"    [{a.kind:12s}] {a.path}")
 
 # ── Stage 3: PDF Image Extraction ───────────────────────────────────
-print(f"{STAGE_SEP}\n  STAGE 3 — PDF IMAGE EXTRACTION\n{STAGE_SEP}")
+print(f"{STAGE_SEP}\n  STAGE 3 — SOURCE ENRICHMENT\n{STAGE_SEP}")
+
+job = run_source_enrichment(job, EXTERNAL_SOURCE_URLS)
+print(f"\n  Status: {job.status}")
+for s in job.steps:
+    print(f"    [{s.state:16s}] {s.name}  {s.error or ''}")
+
+# ── Stage 4: PDF Image Extraction ───────────────────────────────────
+print(f"{STAGE_SEP}\n  STAGE 4 — PDF IMAGE EXTRACTION\n{STAGE_SEP}")
 
 job = run_pdf_image_extraction(job)
 print(f"\n  Status: {job.status}")
@@ -77,6 +93,46 @@ if os.path.isdir(images_dir):
             print(f"    [{size_kb:6.1f} KB] {f}")
 else:
     print("\n  [WARN] No images directory found.")
+
+# ── Stage 5: Code Linking ───────────────────────────────────────────
+print(f"{STAGE_SEP}\n  STAGE 5 — CODE LINKING\n{STAGE_SEP}")
+
+job = run_code_linking(job)
+print(f"\n  Status: {job.status}")
+for s in job.steps:
+    print(f"    [{s.state:16s}] {s.name}  {s.error or ''}")
+
+# ── Stage 6: Note Scaffold ──────────────────────────────────────────
+print(f"{STAGE_SEP}\n  STAGE 6 — NOTE SCAFFOLD\n{STAGE_SEP}")
+
+job = run_note_writing(job)
+print(f"\n  Status: {job.status}")
+for s in job.steps:
+    print(f"    [{s.state:16s}] {s.name}  {s.error or ''}")
+
+# ── Stage 7: Terminology Scaffold ───────────────────────────────────
+print(f"{STAGE_SEP}\n  STAGE 7 — TERMINOLOGY SCAFFOLD\n{STAGE_SEP}")
+
+job = run_terminology_scaffold(job)
+print(f"\n  Status: {job.status}")
+for s in job.steps:
+    print(f"    [{s.state:16s}] {s.name}  {s.error or ''}")
+
+# ── Stage 8: Doubts Scaffold ────────────────────────────────────────
+print(f"{STAGE_SEP}\n  STAGE 8 — DOUBTS SCAFFOLD\n{STAGE_SEP}")
+
+job = run_doubts_scaffold(job)
+print(f"\n  Status: {job.status}")
+for s in job.steps:
+    print(f"    [{s.state:16s}] {s.name}  {s.error or ''}")
+
+# ── Stage 9: Interview Mapping Scaffold ─────────────────────────────
+print(f"{STAGE_SEP}\n  STAGE 9 — INTERVIEW MAPPING SCAFFOLD\n{STAGE_SEP}")
+
+job = run_interview_mapping_scaffold(job)
+print(f"\n  Status: {job.status}")
+for s in job.steps:
+    print(f"    [{s.state:16s}] {s.name}  {s.error or ''}")
 
 # ── Summary ─────────────────────────────────────────────────────────
 print(f"{STAGE_SEP}\n  PIPELINE COMPLETE\n{STAGE_SEP}")

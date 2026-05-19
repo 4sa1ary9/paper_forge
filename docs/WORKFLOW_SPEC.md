@@ -302,6 +302,15 @@ notes/README.md
 ## Practical Takeaways
 ```
 
+当前 Python MVP 先做 Note Writer 骨架版：
+
+- 生成 `notes/README.md`；
+- 写入论文元信息；
+- 写入完整章节结构；
+- 引用 `notes/external-sources.md`、`images/manifest.md`、`notes/code-references.md`；
+- 明确标注 `Draft status: scaffold only; deep explanation not generated yet.`；
+- 不生成 TL;DR、方法解释、实验结论或 practical takeaway 的深度内容。
+
 ### 质量规则
 
 - 先讲直觉，再讲公式。
@@ -339,6 +348,14 @@ notes/terminology.md
 
 术语库应该服务后续学习，不只是把论文里所有名词机械列出来。
 
+当前 Python MVP 先做 Terminology Agent 骨架版：
+
+- 生成 `notes/terminology.md`；
+- 写入论文标题和来源 note；
+- 写入标准术语条目字段；
+- 明确标注 `Draft status: scaffold only; terms not extracted yet.`；
+- 不自动从标题或摘要中机械抽取术语。
+
 ## 9. 疑难点提取流程
 
 ### 输出
@@ -373,6 +390,14 @@ notes/doubts.md
 - 出现在论文或代码的什么位置；
 - 为什么重要；
 - 可能如何解决。
+
+当前 Python MVP 先做 Doubts Agent 骨架版：
+
+- 生成 `notes/doubts.md`；
+- 写入论文标题和来源 note；
+- 写入推荐疑难点章节；
+- 明确标注 `Draft status: scaffold only; doubts not generated yet.`；
+- 不自动编造开放问题、公式疑问或实现疑问。
 
 ## 10. 面试项目映射流程
 
@@ -422,6 +447,15 @@ notes/interview-project.md
 - 方法是否能讲清楚；
 - 是否能串到已有项目经历；
 - 计算资源是否现实。
+
+当前 Python MVP 先做 Interview Mapper Agent 骨架版：
+
+- 生成 `notes/interview-project.md`；
+- 写入论文标题；
+- 链接 `notes/README.md` 和 `notes/code-references.md`；
+- 写入推荐项目映射章节；
+- 明确标注 `Draft status: scaffold only; suitability not assessed yet.`；
+- 不自动给出适配度结论、不设计完整项目方案。
 
 ## 11. Agent Timeline 流程
 

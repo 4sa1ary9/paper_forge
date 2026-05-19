@@ -7,10 +7,14 @@ import streamlit as st
 
 from paperforge.asset_collector import run_asset_collection
 from paperforge.code_linker import run_code_linking
+from paperforge.doubts_agent import run_doubts_scaffold
+from paperforge.interview_mapper import run_interview_mapping_scaffold
 from paperforge.intake_agent import run_paper_intake
+from paperforge.note_writer import run_note_writing
 from paperforge.pdf_image_extractor import run_pdf_image_extraction
 from paperforge.source_enrichment import run_source_enrichment
 from paperforge.storage import get_data_dir, list_jobs
+from paperforge.terminology_agent import run_terminology_scaffold
 
 
 st.set_page_config(
@@ -39,7 +43,11 @@ def main() -> None:
             6. 提取 PDF 图片
             7. 整理外部资料来源
             8. 整理代码仓库候选
-            9. 展示 timeline 和 artifacts
+            9. 生成论文笔记骨架
+            10. 生成术语库骨架
+            11. 生成疑难点骨架
+            12. 生成面试项目映射骨架
+            13. 展示 timeline 和 artifacts
             """
         )
 
@@ -105,6 +113,26 @@ def main() -> None:
         with st.spinner("Code Linker Agent 正在整理代码仓库候选..."):
             active_job = run_code_linking(active_job)
         st.success(f"Code linking finished: {active_job.status}")
+
+    if active_job.metadata and st.button("Write Note Scaffold"):
+        with st.spinner("Note Writer Agent 正在生成笔记骨架..."):
+            active_job = run_note_writing(active_job)
+        st.success("Note scaffold written.")
+
+    if active_job.metadata and st.button("Write Terminology Scaffold"):
+        with st.spinner("Terminology Agent 正在生成术语库骨架..."):
+            active_job = run_terminology_scaffold(active_job)
+        st.success("Terminology scaffold written.")
+
+    if active_job.metadata and st.button("Write Doubts Scaffold"):
+        with st.spinner("Doubts Agent 正在生成疑难点骨架..."):
+            active_job = run_doubts_scaffold(active_job)
+        st.success("Doubts scaffold written.")
+
+    if active_job.metadata and st.button("Write Interview Mapping Scaffold"):
+        with st.spinner("Interview Mapper Agent 正在生成面试项目映射骨架..."):
+            active_job = run_interview_mapping_scaffold(active_job)
+        st.success("Interview mapping scaffold written.")
 
     render_job(active_job, data_dir)
 

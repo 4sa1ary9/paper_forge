@@ -124,10 +124,14 @@ PaperForge-Agent/
 │   ├── arxiv_client.py
 │   ├── asset_collector.py
 │   ├── code_linker.py
+│   ├── doubts_agent.py
+│   ├── interview_mapper.py
 │   ├── intake_agent.py
 │   ├── models.py
+│   ├── note_writer.py
 │   ├── pdf_image_extractor.py
 │   ├── source_enrichment.py
+│   ├── terminology_agent.py
 │   ├── slug.py
 │   ├── steps.py
 │   └── storage.py
@@ -161,8 +165,12 @@ code-vault/
 - `paperforge/intake_agent.py` 是当前最重要的 agent workflow。
 - `paperforge/asset_collector.py` 负责下载 PDF 和 TeX Source，并尝试解压源码。
 - `paperforge/code_linker.py` 负责整理 GitHub 候选仓库并生成代码引用说明。
+- `paperforge/doubts_agent.py` 负责生成疑难点骨架。
+- `paperforge/interview_mapper.py` 负责生成面试项目映射骨架。
+- `paperforge/note_writer.py` 负责生成 `notes/README.md` 的结构化笔记骨架。
 - `paperforge/pdf_image_extractor.py` 负责从 PDF 提取图片和生成图片 manifest。
 - `paperforge/source_enrichment.py` 负责整理外部资料来源和本地资产状态。
+- `paperforge/terminology_agent.py` 负责生成术语库骨架。
 - `.paperforge-data/` 是 agent 运行后生成的研究资产。
 - `docs/PROGRESS.md` 记录项目做到哪一步，方便后续接着开发。
 
@@ -329,9 +337,13 @@ code-vault/
 - `arxiv_client.py`：负责论文搜索和元信息解析。
 - `asset_collector.py`：负责下载 PDF、TeX Source，并尝试解压源码。
 - `code_linker.py`：负责从 metadata 和 external sources 整理 GitHub 候选仓库。
+- `doubts_agent.py`：负责生成 `notes/doubts.md` 的结构化模板。
+- `interview_mapper.py`：负责生成 `notes/interview-project.md` 的结构化模板。
 - `intake_agent.py`：负责 intake 工作流。
+- `note_writer.py`：负责生成主论文笔记骨架，不做未经验证的深度解释。
 - `pdf_image_extractor.py`：负责从 `raw/paper.pdf` 提取图片并生成 `images/manifest.md`。
 - `source_enrichment.py`：负责整理外部资料 URL、本地 PDF/TeX 状态和来源可靠性标签。
+- `terminology_agent.py`：负责生成 `notes/terminology.md` 的结构化模板。
 - `storage.py`：负责保存和读取本地文件。
 - `steps.py`：负责 timeline 状态流转。
 

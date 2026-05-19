@@ -11,7 +11,10 @@
 5. 整理官方论文链接、本地资产状态和用户补充的外部资料 URL。
 6. 从 PDF 提取图片并生成图片 manifest。
 7. 记录 GitHub 代码仓库候选并生成 code references。
-8. 后续继续扩展深度笔记和面试项目映射。
+8. 生成论文笔记骨架，保留证据入口但不伪造深度解释。
+9. 生成术语库骨架。
+10. 生成疑难点骨架。
+11. 生成面试项目映射骨架，保留项目判断入口但不自动下结论。
 
 ## 为什么做这个项目
 
@@ -41,7 +44,7 @@ PaperForge Agent 要解决的是这个完整工作流，而不是单点问答。
 
 ## 当前可运行能力
 
-当前版本已经具备 intake + asset collection + source enrichment + PDF image extraction + code linking 的最小闭环：
+当前版本已经具备 intake + asset collection + source enrichment + PDF image extraction + code linking + note scaffold + terminology scaffold + doubts scaffold + interview mapping scaffold 的最小闭环：
 
 1. 输入论文标题、arXiv ID 或 URL。
 2. Agent 调用 arXiv API 解析论文元信息。
@@ -53,7 +56,11 @@ PaperForge Agent 要解决的是这个完整工作流，而不是单点问答。
 8. Source Enrichment Agent 更新 `notes/external-sources.md`，记录本地 PDF/TeX 状态和用户补充 URL。
 9. PDF Image Extractor 从 `raw/paper.pdf` 提取图片到 `images/` 并生成 `images/manifest.md`。
 10. Code Linker Agent 生成 `notes/code-references.md`，记录 GitHub 候选仓库但不自动 clone。
-11. Streamlit 页面展示论文摘要、任务状态、agent timeline 和 artifact 列表。
+11. Note Writer Agent 生成 `notes/README.md` 的结构化笔记骨架。
+12. Terminology Agent 生成 `notes/terminology.md` 的术语库骨架。
+13. Doubts Agent 生成 `notes/doubts.md` 的疑难点骨架。
+14. Interview Mapper Agent 生成 `notes/interview-project.md` 的面试项目映射骨架。
+15. Streamlit 页面展示论文摘要、任务状态、agent timeline 和 artifact 列表。
 
 ## 项目结构
 
@@ -64,10 +71,14 @@ PaperForge-Agent/
 │   ├── arxiv_client.py             # arXiv 查询和解析
 │   ├── asset_collector.py           # PDF / TeX Source 下载和解压
 │   ├── code_linker.py               # GitHub 候选仓库整理
+│   ├── doubts_agent.py              # 疑难点骨架生成
+│   ├── interview_mapper.py           # 面试项目映射骨架生成
 │   ├── intake_agent.py             # 论文 intake agent workflow
 │   ├── models.py                   # ResearchJob / AgentStep / Artifact 数据结构
+│   ├── note_writer.py               # 论文笔记骨架生成
 │   ├── pdf_image_extractor.py       # PDF 图片提取
 │   ├── source_enrichment.py         # 外部来源和本地资产状态整理
+│   ├── terminology_agent.py         # 术语库骨架生成
 │   ├── slug.py                     # 论文目录名生成
 │   ├── steps.py                    # timeline step 状态流转
 │   └── storage.py                  # 本地文件读写

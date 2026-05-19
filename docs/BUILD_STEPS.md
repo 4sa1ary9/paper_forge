@@ -676,3 +676,459 @@ metadata + images/manifest.md + external-sources.md + code-references.md
 ```
 
 第一版只生成结构化笔记骨架和引用本地 artifact，不生成深度解释，避免伪造论文理解。
+
+## Step 6: Note Writer Agent 骨架版
+
+### 目标
+
+生成主论文笔记入口 `notes/README.md`，但只做结构化骨架，不生成未经验证的深度解释。
+
+本阶段完成的流程：
+
+```text
+metadata + external-sources.md + images/manifest.md + code-references.md
+  -> notes/README.md
+  -> 更新 timeline
+  -> 更新 artifacts
+```
+
+### 为什么这样做
+
+前面步骤已经生成了 metadata、PDF、图片 manifest、外部来源记录和代码候选。此时需要一个主笔记入口把这些产物串起来。
+
+但第一版不能假装已经完成深度论文理解，所以 Note Writer 只生成：
+
+- 元信息；
+- 标准章节结构；
+- evidence inventory；
+- 明确的 scaffold 状态；
+- 后续需要人工或 LLM 深入生成的占位内容。
+
+### 已完成文件
+
+新增核心模块：
+
+- `paperforge/note_writer.py`
+
+修改工作台：
+
+- `app.py`
+
+修改流水线脚本：
+
+- `scripts/run_pipeline.py`
+
+新增测试：
+
+- `tests/test_note_writer.py`
+
+更新文档：
+
+- `README.md`
+- `docs/PROJECT_GUIDE.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/PROGRESS.md`
+- `docs/BUILD_STEPS.md`
+
+### 当前能力
+
+已支持：
+
+- 生成 `notes/README.md`；
+- 写入标题、论文 URL、作者、venue、年份；
+- 写入 `Draft status: scaffold only; deep explanation not generated yet.`；
+- 生成 `TL;DR`、`Paper Overview`、`Background and Motivation`、`Core Method`、`Code Mapping`、`Experiments`、`Deep Q&A`、`Limitations`、`Practical Takeaways` 等章节；
+- 引用 `notes/external-sources.md`；
+- 引用 `images/manifest.md`；
+- 引用 `notes/code-references.md`；
+- 将 `note.write_readme` 写入 timeline；
+- 将 `notes/README.md` 写入 artifacts；
+- Streamlit 页面增加 `Write Note Scaffold` 按钮。
+
+### 验证方式
+
+运行测试：
+
+```powershell
+uv run python -m pytest
+```
+
+运行真实流水线：
+
+```powershell
+uv run python scripts/run_pipeline.py https://arxiv.org/abs/1706.03762 https://github.com/harvardnlp/annotated-transformer
+```
+
+当前验证结果：
+
+```text
+pytest: 15 passed
+真实样例: https://arxiv.org/abs/1706.03762 -> note.write_readme completed
+输出: paper-vault/attention-is-all-you-need/notes/README.md
+```
+
+### 这一阶段没有做什么
+
+这些能力继续留到后续步骤：
+
+- 自动生成 TL;DR；
+- 深度方法解释；
+- 公式解释；
+- 实验结果解读；
+- 图文对应解释；
+- 术语库；
+- 疑难点；
+- 面试项目映射。
+
+### 下一步建议
+
+下一步建议做 **Terminology Agent 骨架版**：
+
+```text
+metadata + notes/README.md
+  -> notes/terminology.md
+  -> 更新 timeline 和 artifacts
+```
+
+第一版只生成术语文件结构，不自动提取术语，避免从摘要里机械编造关键词。
+
+## Step 7: Terminology Agent 骨架版
+
+### 目标
+
+生成专业术语文件 `notes/terminology.md` 的结构化模板，但不自动抽取术语。
+
+本阶段完成的流程：
+
+```text
+metadata + notes/README.md
+  -> notes/terminology.md
+  -> 更新 timeline
+  -> 更新 artifacts
+```
+
+### 为什么这样做
+
+术语库应该服务后续学习，而不是把标题、摘要里的名词机械列出来。当前还没有深度论文解析能力，所以第一版只创建可填写的结构，避免生成看似完整但不可靠的术语解释。
+
+### 已完成文件
+
+新增核心模块：
+
+- `paperforge/terminology_agent.py`
+
+修改工作台：
+
+- `app.py`
+
+修改流水线脚本：
+
+- `scripts/run_pipeline.py`
+
+新增测试：
+
+- `tests/test_terminology_agent.py`
+
+更新文档：
+
+- `README.md`
+- `docs/PROJECT_GUIDE.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/PROGRESS.md`
+- `docs/BUILD_STEPS.md`
+
+### 当前能力
+
+已支持：
+
+- 生成 `notes/terminology.md`；
+- 写入论文标题；
+- 链接 `notes/README.md`；
+- 写入 `Draft status: scaffold only; terms not extracted yet.`；
+- 写入标准术语字段：
+  - `Category`
+  - `Short explanation`
+  - `Why it matters in this paper`
+  - `Related terms`
+  - `First seen in`
+  - `Follow-up reading`
+- 将 `knowledge.write_terminology` 写入 timeline；
+- 将 `notes/terminology.md` 写入 artifacts；
+- Streamlit 页面增加 `Write Terminology Scaffold` 按钮。
+
+### 验证方式
+
+运行测试：
+
+```powershell
+uv run python -m pytest
+```
+
+运行真实流水线：
+
+```powershell
+uv run python scripts/run_pipeline.py https://arxiv.org/abs/1706.03762 https://github.com/harvardnlp/annotated-transformer
+```
+
+当前验证结果：
+
+```text
+pytest: 16 passed
+真实样例: https://arxiv.org/abs/1706.03762 -> knowledge.write_terminology completed
+输出: paper-vault/attention-is-all-you-need/notes/terminology.md
+```
+
+### 这一阶段没有做什么
+
+这些能力继续留到后续步骤：
+
+- 自动抽取术语；
+- 术语解释生成；
+- 术语与公式、图表、代码的定位；
+- 术语可靠性评估；
+- 深度疑难点生成；
+- 面试项目映射。
+
+### 下一步建议
+
+下一步建议做 **Doubts Agent 骨架版**：
+
+```text
+metadata + notes/README.md
+  -> notes/doubts.md
+  -> 更新 timeline 和 artifacts
+```
+
+第一版只生成疑难点文件结构，不自动编造问题。
+
+## Step 8: Doubts Agent 骨架版
+
+### 目标
+
+生成疑难点文件 `notes/doubts.md` 的结构化模板，但不自动编造开放问题。
+
+本阶段完成的流程：
+
+```text
+metadata + notes/README.md
+  -> notes/doubts.md
+  -> 更新 timeline
+  -> 更新 artifacts
+```
+
+### 为什么这样做
+
+疑难点是后续深度阅读的重要资产，但在没有真正解析论文方法、公式和代码之前，自动生成问题很容易变成泛泛的问题清单。
+
+所以第一版只创建可填写的结构：
+
+- open questions；
+- confusing formulas；
+- missing implementation details；
+- claims that need verification；
+- questions to ask an interviewer or mentor。
+
+### 已完成文件
+
+新增核心模块：
+
+- `paperforge/doubts_agent.py`
+
+修改工作台：
+
+- `app.py`
+
+修改流水线脚本：
+
+- `scripts/run_pipeline.py`
+
+新增测试：
+
+- `tests/test_doubts_agent.py`
+
+更新文档：
+
+- `README.md`
+- `docs/PROJECT_GUIDE.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/PROGRESS.md`
+- `docs/BUILD_STEPS.md`
+
+### 当前能力
+
+已支持：
+
+- 生成 `notes/doubts.md`；
+- 写入论文标题；
+- 链接 `notes/README.md`；
+- 写入 `Draft status: scaffold only; doubts not generated yet.`；
+- 写入推荐章节：
+  - `Open Questions`
+  - `Confusing Formulas`
+  - `Missing Implementation Details`
+  - `Claims That Need Verification`
+  - `Questions to Ask an Interviewer or Mentor`
+- 将 `knowledge.write_doubts` 写入 timeline；
+- 将 `notes/doubts.md` 写入 artifacts；
+- Streamlit 页面增加 `Write Doubts Scaffold` 按钮。
+
+### 验证方式
+
+运行测试：
+
+```powershell
+uv run python -m pytest
+```
+
+运行真实流水线：
+
+```powershell
+uv run python scripts/run_pipeline.py https://arxiv.org/abs/1706.03762 https://github.com/harvardnlp/annotated-transformer
+```
+
+当前验证结果：
+
+```text
+pytest: 17 passed
+真实样例: https://arxiv.org/abs/1706.03762 -> knowledge.write_doubts completed
+输出: paper-vault/attention-is-all-you-need/notes/doubts.md
+```
+
+### 这一阶段没有做什么
+
+这些能力继续留到后续步骤：
+
+- 自动生成疑难点；
+- 公式定位；
+- 代码实现缺口判断；
+- 论文 claim 证据核验；
+- 面试项目映射。
+
+### 下一步建议
+
+下一步建议做 **Interview Mapper Agent 骨架版**：
+
+```text
+metadata + notes/README.md + notes/code-references.md
+  -> notes/interview-project.md
+  -> 更新 timeline 和 artifacts
+```
+
+第一版只生成面试项目评估结构，不自动给出适配度结论。
+
+## Step 9: Interview Mapper Agent 骨架版
+
+### 目标
+
+生成面试项目映射文件 `notes/interview-project.md` 的结构化模板，但不自动判断论文是否适合做项目。
+
+本阶段完成的流程：
+
+```text
+metadata + notes/README.md + notes/code-references.md
+  -> notes/interview-project.md
+  -> 更新 timeline
+  -> 更新 artifacts
+```
+
+### 为什么这样做
+
+PaperForge 的长期目标之一是把论文阅读转成可讲清楚的面试项目。但在还没有完成深度论文理解、代码映射和资源评估之前，直接输出“高适配度”或完整项目方案会过早下结论。
+
+所以第一版只创建评估结构：
+
+- suitability；
+- 为什么可能成为项目；
+- 为什么可能不值得做；
+- minimal demo version；
+- full version；
+- technical highlights；
+- risks；
+- 与已有项目的连接；
+- interview talking points。
+
+### 已完成文件
+
+新增核心模块：
+
+- `paperforge/interview_mapper.py`
+
+修改工作台：
+
+- `app.py`
+
+修改流水线脚本：
+
+- `scripts/run_pipeline.py`
+
+新增测试：
+
+- `tests/test_interview_mapper.py`
+
+更新文档：
+
+- `README.md`
+- `docs/PROJECT_GUIDE.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/PROGRESS.md`
+- `docs/BUILD_STEPS.md`
+
+### 当前能力
+
+已支持：
+
+- 生成 `notes/interview-project.md`；
+- 写入论文标题；
+- 链接 `notes/README.md`；
+- 链接 `notes/code-references.md`；
+- 写入 `Draft status: scaffold only; suitability not assessed yet.`；
+- 写入完整项目映射章节；
+- 将 `project.write_interview_mapping` 写入 timeline；
+- 将 `notes/interview-project.md` 写入 artifacts；
+- Streamlit 页面增加 `Write Interview Mapping Scaffold` 按钮。
+
+### 验证方式
+
+运行测试：
+
+```powershell
+uv run python -m pytest
+```
+
+运行真实流水线：
+
+```powershell
+uv run python scripts/run_pipeline.py https://arxiv.org/abs/1706.03762 https://github.com/harvardnlp/annotated-transformer
+```
+
+当前验证结果：
+
+```text
+pytest: 18 passed
+真实样例: https://arxiv.org/abs/1706.03762 -> project.write_interview_mapping completed
+输出: paper-vault/attention-is-all-you-need/notes/interview-project.md
+```
+
+### 这一阶段没有做什么
+
+这些能力继续留到后续步骤：
+
+- 自动判断项目适配度；
+- 自动设计 minimal demo；
+- 自动设计 full version；
+- 自动生成面试话术；
+- 结合真实代码文件做技术亮点判断；
+- 计算资源和实现周期评估。
+
+### 下一步建议
+
+下一步建议做 **Research Package Validator Agent 骨架版**：
+
+```text
+paper-vault/<slug>/
+  -> 检查 metadata、PDF、图片 manifest、notes 产物是否存在
+  -> notes/package-status.md
+  -> 更新 timeline 和 artifacts
+```
+
+这一步可以把当前的多个 scaffold 产物变成一个可验收的研究包状态，再进入深度内容生成。

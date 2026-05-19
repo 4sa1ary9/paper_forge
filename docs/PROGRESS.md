@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**阶段：Step 5，Code Linker Agent 轻量版已完成。**
+**阶段：Step 9，Interview Mapper Agent 骨架版已完成。**
 
 当前项目已经从 TypeScript/React/Express 调整为 **Python + Streamlit**。
 
@@ -95,6 +95,35 @@ uv run python -m pytest
   - 不自动 clone 仓库，不做大范围 GitHub 搜索；
   - 将 `code.link_repositories` 写入 timeline 和 artifacts。
 - Streamlit 工作台已增加 `Link Code Candidates` 按钮。
+- 已实现 Note Writer Agent 骨架版：
+  - 生成 `notes/README.md`；
+  - 写入论文元信息；
+  - 写入主笔记章节结构；
+  - 引用 external source log、image manifest 和 code references；
+  - 明确标注 scaffold only，不生成未经验证的深度解释；
+  - 将 `note.write_readme` 写入 timeline 和 artifacts。
+- Streamlit 工作台已增加 `Write Note Scaffold` 按钮。
+- 已实现 Terminology Agent 骨架版：
+  - 生成 `notes/terminology.md`；
+  - 写入论文标题和来源 note；
+  - 写入标准术语条目字段；
+  - 明确标注 scaffold only，不自动抽取术语；
+  - 将 `knowledge.write_terminology` 写入 timeline 和 artifacts。
+- Streamlit 工作台已增加 `Write Terminology Scaffold` 按钮。
+- 已实现 Doubts Agent 骨架版：
+  - 生成 `notes/doubts.md`；
+  - 写入论文标题和来源 note；
+  - 写入推荐疑难点章节；
+  - 明确标注 scaffold only，不自动编造问题；
+  - 将 `knowledge.write_doubts` 写入 timeline 和 artifacts。
+- Streamlit 工作台已增加 `Write Doubts Scaffold` 按钮。
+- 已实现 Interview Mapper Agent 骨架版：
+  - 生成 `notes/interview-project.md`；
+  - 写入论文标题、来源 note 和代码引用入口；
+  - 写入推荐面试项目映射章节；
+  - 明确标注 scaffold only，不自动判断适配度；
+  - 将 `project.write_interview_mapping` 写入 timeline 和 artifacts。
+- Streamlit 工作台已增加 `Write Interview Mapping Scaffold` 按钮。
 
 ## 当前验证状态
 
@@ -104,7 +133,7 @@ Python 版本已验证通过：
 - 已创建 `.venv` 虚拟环境；
 - 激活提示名为 `agent`；
 - 已生成 `uv.lock`；
-- 执行 `uv run python -m pytest` 通过：14 passed；
+- 执行 `uv run python -m pytest` 通过：18 passed；
 - 真实 intake + asset collection + source enrichment 通过：
   - 输入：`https://arxiv.org/abs/1706.03762`
   - 输出：`attention-is-all-you-need`
@@ -125,6 +154,22 @@ Python 版本已验证通过：
   - 外部 GitHub URL：`https://github.com/harvardnlp/annotated-transformer`
   - 输出：`paper-vault/attention-is-all-you-need/notes/code-references.md`
   - 状态：`completed`
+- 真实 note scaffold pipeline 通过：
+  - 命令：`uv run python scripts/run_pipeline.py https://arxiv.org/abs/1706.03762 https://github.com/harvardnlp/annotated-transformer`
+  - 输出：`paper-vault/attention-is-all-you-need/notes/README.md`
+  - 状态：`completed`
+- 真实 terminology scaffold pipeline 通过：
+  - 命令：`uv run python scripts/run_pipeline.py https://arxiv.org/abs/1706.03762 https://github.com/harvardnlp/annotated-transformer`
+  - 输出：`paper-vault/attention-is-all-you-need/notes/terminology.md`
+  - 状态：`completed`
+- 真实 doubts scaffold pipeline 通过：
+  - 命令：`uv run python scripts/run_pipeline.py https://arxiv.org/abs/1706.03762 https://github.com/harvardnlp/annotated-transformer`
+  - 输出：`paper-vault/attention-is-all-you-need/notes/doubts.md`
+  - 状态：`completed`
+- 真实 interview mapping scaffold pipeline 通过：
+  - 命令：`uv run python scripts/run_pipeline.py https://arxiv.org/abs/1706.03762 https://github.com/harvardnlp/annotated-transformer`
+  - 输出：`paper-vault/attention-is-all-you-need/notes/interview-project.md`
+  - 状态：`completed`
 - Streamlit 已启动：
   - URL：`http://localhost:8501`
   - HTTP 状态：200
@@ -136,21 +181,23 @@ Python 版本已验证通过：
 
 ## 下一步
 
-Step 5 已跑通。下一步不要直接扩大 scope，建议做 **Note Writer Agent 骨架版**：
+Step 9 已跑通。下一步不要直接做深度生成，建议做 **Research Package Validator Agent 骨架版**：
 
 ```text
-metadata + images/manifest.md + external-sources.md + code-references.md
-  -> 写 notes/README.md 的结构化初稿
+paper-vault/<slug>/
+  -> 检查 metadata、PDF、图片 manifest、notes 产物是否存在
+  -> 写 notes/package-status.md
   -> 更新 timeline
 ```
+
+这一步可以把当前多个 scaffold 串成一个可验收的研究包状态，为后续深度笔记生成前的质量门槛做准备。
 
 ## 暂不做
 
 - clone 仓库；
 - 深度论文笔记生成；
-- 术语库；
-- 疑难点；
-- 面试项目映射；
+- 自动判断面试项目适配度；
+- 自动生成完整项目方案；
 - FastAPI 后端；
 - React 前端。
 
@@ -167,7 +214,7 @@ metadata + images/manifest.md + external-sources.md + code-references.md
 
 这个项目后续可以说：
 
-> 我做的是一个 AI 论文研究 Agent。它不是简单总结论文，而是把论文研究拆成可追踪的 workflow：论文识别、资产下载、代码关联、资料增强、深度笔记、疑难点和面试项目映射。当前版本先完成了 Python 版 intake workflow，后续会逐步扩展到资产收集和笔记生成。
+> 我做的是一个 AI 论文研究 Agent。它不是简单总结论文，而是把论文研究拆成可追踪的 workflow：论文识别、资产下载、代码关联、资料增强、笔记骨架、术语库、疑难点和面试项目映射。当前 Python 版已经跑通了单篇论文研究包的 scaffold 闭环，后续会逐步扩展到深度笔记生成和项目适配度判断。
 
 不要说：
 

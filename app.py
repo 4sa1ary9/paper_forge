@@ -11,6 +11,7 @@ from paperforge.doubts_agent import run_doubts_scaffold
 from paperforge.interview_mapper import run_interview_mapping_scaffold
 from paperforge.intake_agent import run_paper_intake
 from paperforge.note_writer import run_note_writing
+from paperforge.package_validator import run_package_validation
 from paperforge.pdf_image_extractor import run_pdf_image_extraction
 from paperforge.source_enrichment import run_source_enrichment
 from paperforge.storage import get_data_dir, list_jobs
@@ -47,7 +48,8 @@ def main() -> None:
             10. 生成术语库骨架
             11. 生成疑难点骨架
             12. 生成面试项目映射骨架
-            13. 展示 timeline 和 artifacts
+            13. 验证研究包状态
+            14. 展示 timeline 和 artifacts
             """
         )
 
@@ -133,6 +135,11 @@ def main() -> None:
         with st.spinner("Interview Mapper Agent 正在生成面试项目映射骨架..."):
             active_job = run_interview_mapping_scaffold(active_job)
         st.success("Interview mapping scaffold written.")
+
+    if active_job.metadata and st.button("Validate Research Package"):
+        with st.spinner("Research Package Validator 正在检查研究包产物..."):
+            active_job = run_package_validation(active_job)
+        st.success(f"Research package validation finished: {active_job.status}")
 
     render_job(active_job, data_dir)
 

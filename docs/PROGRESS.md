@@ -2,9 +2,17 @@
 
 ## 当前阶段
 
-**阶段：Step 9，Interview Mapper Agent 骨架版已完成。**
+**阶段：Step 10，Research Package Validator Agent 骨架版已完成。**
 
 当前项目已经从 TypeScript/React/Express 调整为 **Python + Streamlit**。
+
+## 完成度结论
+
+当前项目已经完成 **Step 10 scaffold MVP**，但还没有完成文档中描述的最终研究包目标。
+
+- 已完成：单篇论文从 intake 到 package validation 的确定性 workflow，包含 metadata、PDF/TeX 资产、外部来源记录、图片 manifest、代码候选、笔记/术语/疑难点/面试项目模板和研究包状态报告。
+- 未完成：深度论文笔记生成、术语自动解释、疑难点自动生成、代码到论文方法的真实映射、面试项目适配度判断、RAG、自动 clone、多篇论文批处理。
+- 详细核对见：`docs/STATUS_REVIEW.md`。
 
 ## 当前技术栈
 
@@ -124,6 +132,15 @@ uv run python -m pytest
   - 明确标注 scaffold only，不自动判断适配度；
   - 将 `project.write_interview_mapping` 写入 timeline 和 artifacts。
 - Streamlit 工作台已增加 `Write Interview Mapping Scaffold` 按钮。
+- 已实现 Research Package Validator Agent 骨架版：
+  - 生成 `notes/package-status.md`；
+  - 检查 `metadata.json`、PDF、图片 manifest 和 notes 产物是否存在；
+  - 区分 required、recommended 和 optional 产物；
+  - PDF 和图片 manifest 缺失记录为 warning；
+  - TeX Source 缺失记录为 optional missing，不阻塞 PDF-based processing；
+  - 只检查文件存在状态，不判断内容质量、论文理解深度或项目适配度；
+  - 将 `package.validate_research_package` 写入 timeline 和 artifacts。
+- Streamlit 工作台已增加 `Validate Research Package` 按钮。
 
 ## 当前验证状态
 
@@ -133,7 +150,7 @@ Python 版本已验证通过：
 - 已创建 `.venv` 虚拟环境；
 - 激活提示名为 `agent`；
 - 已生成 `uv.lock`；
-- 执行 `uv run python -m pytest` 通过：18 passed；
+- 执行 `uv run python -m pytest` 通过：21 passed；
 - 真实 intake + asset collection + source enrichment 通过：
   - 输入：`https://arxiv.org/abs/1706.03762`
   - 输出：`attention-is-all-you-need`
@@ -170,6 +187,10 @@ Python 版本已验证通过：
   - 命令：`uv run python scripts/run_pipeline.py https://arxiv.org/abs/1706.03762 https://github.com/harvardnlp/annotated-transformer`
   - 输出：`paper-vault/attention-is-all-you-need/notes/interview-project.md`
   - 状态：`completed`
+- 真实 package validation pipeline 通过：
+  - 命令：`uv run python scripts/run_pipeline.py https://arxiv.org/abs/1706.03762 https://github.com/harvardnlp/annotated-transformer`
+  - 输出：`paper-vault/attention-is-all-you-need/notes/package-status.md`
+  - 状态：`completed`
 - Streamlit 已启动：
   - URL：`http://localhost:8501`
   - HTTP 状态：200
@@ -181,16 +202,26 @@ Python 版本已验证通过：
 
 ## 下一步
 
-Step 9 已跑通。下一步不要直接做深度生成，建议做 **Research Package Validator Agent 骨架版**：
+Step 10 已跑通。下一步不要直接做未经验证的深度生成，建议先确认 **深度笔记生成前的质量门槛**：
 
 ```text
-paper-vault/<slug>/
-  -> 检查 metadata、PDF、图片 manifest、notes 产物是否存在
-  -> 写 notes/package-status.md
-  -> 更新 timeline
+notes/package-status.md
+  -> required / recommended / optional 是否齐全
+  -> 哪些产物需要人工补齐或复查
+  -> 再决定是否进入深度笔记生成
 ```
 
-这一步可以把当前多个 scaffold 串成一个可验收的研究包状态，为后续深度笔记生成前的质量门槛做准备。
+这一步可以避免在研究包输入还不完整时，直接进入深度内容生成。
+
+推荐下一阶段：
+
+```text
+Step 11: Deep Note Planner / Readiness Gate
+  -> 读取 package-status.md 和已有 scaffold
+  -> 判断哪些章节有证据支撑
+  -> 标记哪些章节不能自动生成
+  -> 写 notes/deep-note-plan.md
+```
 
 ## 暂不做
 

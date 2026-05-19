@@ -24,6 +24,7 @@ ArtifactKind = Literal[
     "doubts",
     "code_reference",
     "interview_mapping",
+    "package_status",
     "job_record",
 ]
 
@@ -78,4 +79,3 @@ class ResearchJob:
 
 def to_dict(value):
     return asdict(value)
-

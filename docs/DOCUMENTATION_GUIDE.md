@@ -108,6 +108,21 @@ PaperForge Agent 不是一个只有代码的项目。它是一个 agent workflow
 - `BUILD_STEPS.md` 是历史开发记录。
 - 两者可以有少量重复，但不要整段复制。
 
+### docs/STATUS_REVIEW.md
+
+作用：
+
+- 对照文档规划和当前代码实现；
+- 明确项目是 scaffold MVP completed，还是 full vision completed；
+- 列出已经完成、尚未完成和下一步建议；
+- 防止面试或后续开发时夸大当前能力。
+
+使用场景：
+
+- 需要判断“项目有没有完成”时先看这里；
+- 每次完成大阶段后更新；
+- 面试前校准项目边界。
+
 ## 3. 后续应补充文档
 
 ### docs/ARCHITECTURE.md
@@ -204,6 +219,7 @@ docs/WORKFLOW_SPEC.md             已创建
 docs/DOCUMENTATION_GUIDE.md       已创建
 docs/PROGRESS.md                  已创建
 docs/BUILD_STEPS.md               已创建
+docs/STATUS_REVIEW.md             已创建
 docs/ARCHITECTURE.md              未开始
 docs/DATA_MODEL.md                未开始
 docs/API_SPEC.md                  暂缓，等 FastAPI 化后再写

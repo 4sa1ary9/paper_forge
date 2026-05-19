@@ -15,6 +15,7 @@
 9. 生成术语库骨架。
 10. 生成疑难点骨架。
 11. 生成面试项目映射骨架，保留项目判断入口但不自动下结论。
+12. 生成研究包状态检查报告，区分 required、recommended 和 optional 产物。
 
 ## 为什么做这个项目
 
@@ -44,7 +45,7 @@ PaperForge Agent 要解决的是这个完整工作流，而不是单点问答。
 
 ## 当前可运行能力
 
-当前版本已经具备 intake + asset collection + source enrichment + PDF image extraction + code linking + note scaffold + terminology scaffold + doubts scaffold + interview mapping scaffold 的最小闭环：
+当前版本已经具备 intake + asset collection + source enrichment + PDF image extraction + code linking + note scaffold + terminology scaffold + doubts scaffold + interview mapping scaffold + package validation 的最小闭环：
 
 1. 输入论文标题、arXiv ID 或 URL。
 2. Agent 调用 arXiv API 解析论文元信息。
@@ -60,7 +61,8 @@ PaperForge Agent 要解决的是这个完整工作流，而不是单点问答。
 12. Terminology Agent 生成 `notes/terminology.md` 的术语库骨架。
 13. Doubts Agent 生成 `notes/doubts.md` 的疑难点骨架。
 14. Interview Mapper Agent 生成 `notes/interview-project.md` 的面试项目映射骨架。
-15. Streamlit 页面展示论文摘要、任务状态、agent timeline 和 artifact 列表。
+15. Research Package Validator Agent 生成 `notes/package-status.md`，检查研究包文件状态。
+16. Streamlit 页面展示论文摘要、任务状态、agent timeline 和 artifact 列表。
 
 ## 项目结构
 
@@ -76,6 +78,7 @@ PaperForge-Agent/
 │   ├── intake_agent.py             # 论文 intake agent workflow
 │   ├── models.py                   # ResearchJob / AgentStep / Artifact 数据结构
 │   ├── note_writer.py               # 论文笔记骨架生成
+│   ├── package_validator.py          # 研究包状态检查
 │   ├── pdf_image_extractor.py       # PDF 图片提取
 │   ├── source_enrichment.py         # 外部来源和本地资产状态整理
 │   ├── terminology_agent.py         # 术语库骨架生成

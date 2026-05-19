@@ -52,6 +52,25 @@ PaperForge Agent 不能被包装成普通 ChatGPT 套壳。它的 agent 特征�
 
 ## 5. 项目范围
 
+### 当前完成度
+
+当前代码已经完成 **单篇论文 scaffold MVP**：
+
+- 可以跑通 intake -> asset collection -> source enrichment -> PDF image extraction -> code linking -> note scaffold -> terminology scaffold -> doubts scaffold -> interview mapping scaffold -> package validation；
+- 所有产物都能落盘；
+- agent timeline 和 artifacts 能记录每一步状态；
+- 真实 arXiv 样例已经验证。
+
+但项目还没有完成最终愿景：
+
+- `notes/README.md` 仍是结构化笔记骨架，不是深度论文解释；
+- `notes/terminology.md` 仍是术语模板，不是自动抽取和解释结果；
+- `notes/doubts.md` 仍是疑难点模板，不是真实阅读疑问；
+- `notes/interview-project.md` 仍是项目映射模板，不是适配度判断；
+- `notes/package-status.md` 只检查文件是否存在，不评估内容质量。
+
+所以当前版本适合展示 agent workflow、状态管理、产物规范和失败容错；还不适合宣称已经自动完成深度论文研究。
+
 ### MVP 范围内
 
 - 论文元信息识别；
@@ -129,6 +148,7 @@ PaperForge-Agent/
 │   ├── intake_agent.py
 │   ├── models.py
 │   ├── note_writer.py
+│   ├── package_validator.py
 │   ├── pdf_image_extractor.py
 │   ├── source_enrichment.py
 │   ├── terminology_agent.py
@@ -151,7 +171,8 @@ PaperForge-Agent/
         │   ├── terminology.md
         │   ├── doubts.md
         │   ├── code-references.md
-        │   └── interview-project.md
+        │   ├── interview-project.md
+        │   └── package-status.md
         └── metadata.json
 
 code-vault/
@@ -168,6 +189,7 @@ code-vault/
 - `paperforge/doubts_agent.py` 负责生成疑难点骨架。
 - `paperforge/interview_mapper.py` 负责生成面试项目映射骨架。
 - `paperforge/note_writer.py` 负责生成 `notes/README.md` 的结构化笔记骨架。
+- `paperforge/package_validator.py` 负责生成研究包状态检查报告。
 - `paperforge/pdf_image_extractor.py` 负责从 PDF 提取图片和生成图片 manifest。
 - `paperforge/source_enrichment.py` 负责整理外部资料来源和本地资产状态。
 - `paperforge/terminology_agent.py` 负责生成术语库骨架。
@@ -201,7 +223,8 @@ code-vault/
     │   ├── terminology.md
     │   ├── doubts.md
     │   ├── code-references.md
-    │   └── interview-project.md
+    │   ├── interview-project.md
+    │   └── package-status.md
     └── metadata.json
 
 code-vault/
@@ -315,6 +338,18 @@ code-vault/
 - 面试时能讲哪些技术深度？
 - 需要规避哪些实现风险？
 
+### Research Package Validator Agent
+
+负责检查单篇论文研究包的文件产物是否齐全。
+
+输出内容：
+
+- required 产物状态；
+- recommended 产物 warning；
+- optional 产物缺失记录；
+- `notes/package-status.md` 状态报告；
+- timeline 和 artifact 记录。
+
 ## 11. 产品界面形态
 
 界面应该是工作台，不是宣传落地页。当前用 Streamlit 实现，后续如果要做更正式的网页，再考虑迁移。
@@ -386,6 +421,10 @@ code-vault/
 面试时最强的表达是：
 
 > 我做的不是通用聊天机器人，而是一个研究工作流系统。Agent 会围绕论文、代码、社区资料和项目规划生成一组可追踪、可复用的结构化产物。
+
+当前版本的诚实边界：
+
+> 当前版本已经跑通 scaffold 研究包闭环，但深度论文内容生成和项目适配度判断还没有实现。这个边界是有意保留的，因为系统先要保证输入资产、状态流转、产物落盘和质量门槛可靠。
 
 ## 15. 开发原则
 

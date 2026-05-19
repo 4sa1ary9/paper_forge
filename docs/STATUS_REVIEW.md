@@ -1,0 +1,96 @@
+# PaperForge Agent 完成度核对
+
+## 结论
+
+**当前项目已经完成 Step 10 的 scaffold 闭环，但还没有完成文档中描述的最终研究包目标。**
+
+更准确的表述是：
+
+> PaperForge Agent 当前已经跑通单篇论文研究包的确定性 workflow 和文件产物骨架；但深度论文理解、术语解释、疑难点生成、代码到论文的真实映射、面试项目适配度判断仍然是后续规划。
+
+所以项目不能说“完整完成”。可以说：
+
+> 当前版本完成了可演示、可追踪、可扩展的 scaffold MVP。
+
+## 已按文档完成的部分
+
+| 规划能力 | 当前状态 | 说明 |
+| --- | --- | --- |
+| Python + Streamlit 本地工作台 | 已完成 | 当前没有继续使用 TypeScript/React/Express。 |
+| uv 环境和 pytest 基线 | 已完成 | 当前测试基线为 `21 passed`。 |
+| Paper Intake | 已完成 | 支持 arXiv URL/ID 解析，生成 metadata 和 workspace。 |
+| Asset Collection | 已完成 | 下载 PDF、TeX Source，并尝试解压。 |
+| Source Enrichment | 已完成轻量版 | 记录官方论文链接、本地资产状态和用户补充 URL，不抓取正文。 |
+| PDF Image Extraction | 已完成轻量版 | 使用 PyMuPDF 提取图片或页面 snapshot，生成 manifest。 |
+| Code Linker | 已完成轻量版 | 整理 GitHub 候选 URL，不自动搜索全网，不 clone。 |
+| Note Writer | 已完成骨架版 | 生成 `notes/README.md` 结构，不生成深度解释。 |
+| Terminology Agent | 已完成骨架版 | 生成 `notes/terminology.md` 模板，不自动抽取术语。 |
+| Doubts Agent | 已完成骨架版 | 生成 `notes/doubts.md` 模板，不自动生成问题。 |
+| Interview Mapper | 已完成骨架版 | 生成 `notes/interview-project.md` 模板，不判断适配度。 |
+| Package Validator | 已完成骨架版 | 生成 `notes/package-status.md`，只检查文件存在状态。 |
+| Agent timeline 和 artifacts | 已完成基础版 | 每个步骤写入 `AgentStep` 和 `Artifact`。 |
+| 真实样例 pipeline | 已完成 | Attention Is All You Need 样例可跑到 Stage 10。 |
+
+## 按文档规划尚未完成的部分
+
+| 规划能力 | 当前缺口 | 为什么未完成 |
+| --- | --- | --- |
+| 深度论文笔记生成 | `notes/README.md` 仍是 scaffold | 还没有 PDF 正文解析、证据定位和 LLM 生成链路。 |
+| 术语自动抽取和解释 | `terminology.md` 仍是模板 | 当前不从论文全文中抽取术语，也不生成解释。 |
+| 疑难点自动生成 | `doubts.md` 仍是模板 | 当前不解析公式、方法细节或代码缺口。 |
+| 代码到论文方法映射 | `code-references.md` 只记录候选 URL | 当前不 clone 仓库，不分析代码文件。 |
+| 面试项目适配度判断 | `interview-project.md` 仍是模板 | 当前不判断 high/medium/low，也不设计 demo。 |
+| 外部资料内容抽取 | 只记录 URL | 当前不抓取博客、视频、公众号或教程正文。 |
+| PDF 文本提取和段落证据 | 未实现 | 当前只做图片提取，没有正文 chunk 或 evidence map。 |
+| RAG / 向量检索 | 未实现 | 当前没有索引、检索器或 embedding 存储。 |
+| Agent workflow 可视化增强 | 基础 timeline 已有 | 还没有 plan/git/file-change 可视化。 |
+| 自动 clone 仓库 | 明确暂不做 | clone 需要用户确认，避免 scope 和数据体积失控。 |
+| 多篇论文批处理 | 未实现 | 当前以单篇论文 job 为主。 |
+| FastAPI / React 产品化 | 明确暂不做 | 当前技术路线是 Python + Streamlit。 |
+
+## 当前版本可以怎么介绍
+
+推荐说法：
+
+> 这是一个已经跑通单篇论文 scaffold 研究包的 agentic workflow。它能稳定完成论文识别、资产下载、来源整理、图片提取、代码候选整理、笔记/术语/疑难点/项目映射模板生成和研究包状态检查。
+
+不要说：
+
+> 已经能自动深度读懂论文并生成完整研究报告。
+
+更稳的面试表达：
+
+> 当前版本重点展示的是 workflow 拆分、状态管理、产物持久化和失败容错。深度内容生成还没有做，因为我先把可验证的数据管道和 scaffold 结构跑通，再逐步引入 LLM。
+
+## 是否符合文档规划
+
+分两层看：
+
+- **符合当前阶段文档**：Step 10 的目标已经实现，测试和真实 pipeline 已验证。
+- **未完成长期规划**：`PROJECT_GUIDE.md`、`WORKFLOW_SPEC.md` 中的深度笔记、术语抽取、疑难点生成、面试项目判断、RAG、代码分析还没做。
+
+因此当前状态应标记为：
+
+```text
+Stage: Step 10 completed
+Completion level: scaffold MVP completed
+Full project vision: not completed
+```
+
+## 建议下一步
+
+不要直接做深度生成。建议先做：
+
+```text
+Step 11: Deep Note Planner / Readiness Gate
+```
+
+目标：
+
+- 读取 `notes/package-status.md`；
+- 明确哪些证据已经可用；
+- 明确哪些章节可以进入 LLM 生成；
+- 明确哪些章节证据不足，不能自动编写；
+- 输出 `notes/deep-note-plan.md`。
+
+这样可以继续保持项目原则：先建立可验证的流程和质量门槛，再做生成内容。

@@ -14,10 +14,39 @@ PaperForge Agent 把一个论文输入转换成一个完整研究包。
   -> 深度笔记生成
   -> 术语和疑难点提取
   -> 面试项目映射
+  -> 研究包验证
   -> 最终研究包
 ```
 
 每个阶段都应该产生持久化产物。某个阶段失败时，如果不影响后续步骤，后续步骤应该继续执行。
+
+## 1.1 当前实现边界
+
+截至 Step 10，当前 Python 版已经跑通的是 **scaffold research package**，不是最终深度研究包。
+
+已经实现：
+
+- 论文身份识别；
+- PDF 和 TeX Source 资产收集；
+- 外部来源记录；
+- PDF 图片提取和 manifest；
+- GitHub 候选 URL 整理；
+- 笔记、术语、疑难点和面试项目映射模板；
+- 研究包文件存在性验证。
+
+尚未实现：
+
+- PDF 正文解析和段落级 evidence map；
+- 深度论文解释；
+- 自动术语抽取和解释；
+- 自动疑难点生成；
+- 代码仓库 clone 和代码文件分析；
+- 方法到代码的真实映射；
+- 面试项目适配度判断；
+- RAG / 向量检索；
+- 多篇论文批处理。
+
+因此后续实现时，应把当前版本视为 **可运行的 scaffold MVP**，不要把 scaffold 文件当成已完成的深度内容。
 
 ## 2. 论文输入流程
 
@@ -457,7 +486,35 @@ notes/interview-project.md
 - 明确标注 `Draft status: scaffold only; suitability not assessed yet.`；
 - 不自动给出适配度结论、不设计完整项目方案。
 
-## 11. Agent Timeline 流程
+## 11. 研究包验证流程
+
+### 输出
+
+```text
+notes/package-status.md
+```
+
+### 目标
+
+把当前研究包的文件状态整理成一个可验收清单。
+
+当前 Python MVP 先做 Research Package Validator Agent 骨架版：
+
+- 检查 `metadata.json` 是否存在；
+- 检查 `raw/paper.pdf` 是否存在，缺失时记录为 warning；
+- 检查 `images/manifest.md` 是否存在，缺失时记录为 warning；
+- 检查 `notes/external-sources.md`、`notes/code-references.md`、`notes/README.md`、`notes/terminology.md`、`notes/doubts.md`、`notes/interview-project.md` 是否存在；
+- 检查 `raw/source.tar.gz` 和 `raw/tex-source/` 是否存在，但只标记为 optional，不作为失败条件；
+- 只判断文件是否存在，不判断笔记质量、论文理解深度或项目适配度。
+
+### 状态规则
+
+- required 产物缺失：validator step 记为 `partial`，报告列出 missing required；
+- recommended 产物缺失：validator step 记为 `partial`，报告列出 warnings；
+- optional 产物缺失：报告列出 optional missing，不改变 step 成败；
+- 不使用 `failed` 表示普通文件缺失，除非验证报告本身无法写入。
+
+## 12. Agent Timeline 流程
 
 每个研究任务都要维护 timeline。
 
@@ -488,7 +545,7 @@ notes/interview-project.md
 
 Streamlit 工作台应该把 timeline 渲染成可视化 plan 或任务时间线。
 
-## 12. Git 和 Plan 可视化流程
+## 13. Git 和 Plan 可视化流程
 
 ### 目标
 
@@ -508,7 +565,7 @@ Streamlit 工作台应该把 timeline 渲染成可视化 plan 或任务时间线
 
 这个功能不是替代 git，而是帮助用户理解 agent 到底改了什么、为什么改、是否跑偏。
 
-## 13. 人工确认点
+## 14. 人工确认点
 
 遇到以下情况时，agent 应该暂停并请求用户确认：
 
@@ -519,7 +576,7 @@ Streamlit 工作台应该把 timeline 渲染成可视化 plan 或任务时间线
 - 面试项目映射建议了过大的项目；
 - 即将覆盖已有资产。
 
-## 14. 完成度检查清单
+## 15. 完成度检查清单
 
 一个论文研究包可接受的最低标准：
 
@@ -532,3 +589,6 @@ Streamlit 工作台应该把 timeline 渲染成可视化 plan 或任务时间线
 - 如果代码相关，`notes/code-references.md` 必须存在；
 - `notes/interview-project.md` 给出具体项目判断；
 - 每个外部来源都有 URL 和可靠性标签。
+- `notes/package-status.md` 存在，并清楚列出 required、recommended 和 optional 产物状态。
+
+当前 Step 10 只满足其中的文件存在性部分；深度方法解释、可复用术语、未解决问题和具体项目判断仍未满足。

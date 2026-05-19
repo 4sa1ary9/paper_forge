@@ -1132,3 +1132,160 @@ paper-vault/<slug>/
 ```
 
 这一步可以把当前的多个 scaffold 产物变成一个可验收的研究包状态，再进入深度内容生成。
+
+## Step 10: Research Package Validator Agent 骨架版
+
+### 目标
+
+生成研究包状态文件 `notes/package-status.md`，只检查当前论文工作区中的文件是否存在，不判断内容质量。
+
+本阶段完成的流程：
+
+```text
+paper-vault/<slug>/
+  -> 检查 metadata、PDF、图片 manifest、notes 产物是否存在
+  -> notes/package-status.md
+  -> 更新 timeline
+  -> 更新 artifacts
+```
+
+### 为什么这样做
+
+前面步骤已经生成了论文 metadata、PDF、图片 manifest、外部来源记录、代码引用、主笔记骨架、术语库、疑难点和面试项目映射。进入深度内容生成之前，需要一个轻量验收门槛，明确哪些基础输入已经存在，哪些还需要补齐。
+
+这个阶段刻意不做深度判断：
+
+- 不检查论文笔记是否真的解释了方法；
+- 不判断术语解释是否正确；
+- 不判断疑难点是否有价值；
+- 不判断面试项目适配度；
+- 不因为 TeX Source 缺失阻塞 PDF-based processing。
+
+### 已完成文件
+
+新增核心模块：
+
+- `paperforge/package_validator.py`
+
+修改数据模型：
+
+- `paperforge/models.py`
+
+修改工作台：
+
+- `app.py`
+
+修改流水线脚本：
+
+- `scripts/run_pipeline.py`
+
+新增测试：
+
+- `tests/test_package_validator.py`
+
+更新文档：
+
+- `README.md`
+- `docs/PROJECT_GUIDE.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/PROGRESS.md`
+- `docs/BUILD_STEPS.md`
+
+### 当前能力
+
+已支持：
+
+- 生成 `notes/package-status.md`；
+- 检查 required 产物：
+  - `metadata.json`；
+  - `notes/external-sources.md`；
+  - `notes/code-references.md`；
+  - `notes/README.md`；
+  - `notes/terminology.md`；
+  - `notes/doubts.md`；
+  - `notes/interview-project.md`；
+- 检查 recommended 产物：
+  - `raw/paper.pdf`；
+  - `images/manifest.md`；
+- 检查 optional 产物：
+  - `raw/source.tar.gz`；
+  - `raw/tex-source/`；
+- required 缺失时将 validator step 标记为 `partial`；
+- PDF 或图片 manifest 缺失时记录 warning；
+- TeX Source 缺失只写入 optional missing；
+- 将 `package.validate_research_package` 写入 timeline；
+- 将 `notes/package-status.md` 写入 artifacts；
+- Streamlit 页面增加 `Validate Research Package` 按钮。
+
+### 验证方式
+
+运行测试：
+
+```powershell
+uv run python -m pytest
+```
+
+运行真实流水线：
+
+```powershell
+uv run python scripts/run_pipeline.py https://arxiv.org/abs/1706.03762 https://github.com/harvardnlp/annotated-transformer
+```
+
+当前验证结果：
+
+```text
+pytest: 21 passed
+compileall: app.py paperforge tests scripts passed
+真实样例: https://arxiv.org/abs/1706.03762 -> package.validate_research_package completed
+输出: paper-vault/attention-is-all-you-need/notes/package-status.md
+```
+
+### 这一阶段没有做什么
+
+这些能力继续留到后续步骤：
+
+- 自动评估笔记质量；
+- 自动生成深度论文解释；
+- 自动抽取和解释术语；
+- 自动生成疑难点；
+- 自动判断面试项目适配度；
+- 自动 clone 或分析第三方仓库。
+
+### 下一步建议
+
+下一步建议先确认 **深度笔记生成前的质量门槛**，再决定是否进入深度内容生成。
+
+## Documentation Update: 完成度核对
+
+### 目标
+
+把“当前阶段已完成”和“长期规划未完成”明确分开，避免把 scaffold MVP 误说成最终研究包已经完成。
+
+### 已完成文件
+
+新增文档：
+
+- `docs/STATUS_REVIEW.md`
+
+更新文档：
+
+- `docs/PROGRESS.md`
+- `docs/PROJECT_GUIDE.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/DOCUMENTATION_GUIDE.md`
+- `docs/AI_LEARNING_PROMPT.md`
+- `docs/self/learn.md`
+
+### 当前结论
+
+```text
+Stage: Step 10 completed
+Completion level: scaffold MVP completed
+Full project vision: not completed
+```
+
+当前项目已经按 Step 10 文档目标跑通，但还没有完成深度论文笔记、自动术语解释、疑难点生成、代码分析、面试项目适配度判断和 RAG 等长期规划。
+
+### 下一步建议
+
+下一步建议做 **Step 11: Deep Note Planner / Readiness Gate**，先判断哪些章节有证据支撑，再决定是否进入 LLM 深度内容生成。

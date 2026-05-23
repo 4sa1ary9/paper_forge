@@ -13,6 +13,8 @@ PaperForge Agent 不是一个只有代码的项目。它是一个 agent workflow
 
 这份文档用于规定项目后续应该准备哪些 Markdown 文档。
 
+当前文档状态应以 `docs/PROGRESS.md` 和 `docs/STATUS_REVIEW.md` 为准。截至 Step 12，项目已经完成 scaffold MVP + PDF text evidence map + deep note readiness gate；深度笔记正文生成、段落级 evidence map、RAG 和代码仓库分析仍属于后续规划。
+
 ## 2. 当前必须文档
 
 ### README.md
@@ -123,6 +125,47 @@ PaperForge Agent 不是一个只有代码的项目。它是一个 agent workflow
 - 每次完成大阶段后更新；
 - 面试前校准项目边界。
 
+### docs/AI_LEARNING_PROMPT.md
+
+作用：
+
+- 作为后续请 AI 带学项目时的提示词；
+- 明确当前项目阶段、模块列表和面试追问范围；
+- 防止学习材料把 scaffold 能力说成深度研究能力。
+
+使用场景：
+
+- 让 AI 分阶段讲解 PaperForge；
+- 做代码深读；
+- 做面试模拟。
+
+### docs/self/learn.md
+
+作用：
+
+- 保存已经整理过的项目学习笔记；
+- 从架构、代码和面试视角复盘项目；
+- 跟随项目阶段更新当前能力边界。
+
+使用场景：
+
+- 面试前快速复习；
+- 继续开发前校准设计取舍；
+- 对照 `STATUS_REVIEW.md` 检查表达是否夸大。
+
+### docs/self/idea.md
+
+作用：
+
+- 记录暂不进入当前 scope 的想法；
+- 保存用户在开发中提出的改进方向；
+- 作为后续阶段设计的候选输入。
+
+使用场景：
+
+- 避免临时想法打断当前阶段；
+- 后续写 spec 或实现计划前回看。
+
 ## 3. 后续应补充文档
 
 ### docs/ARCHITECTURE.md
@@ -220,6 +263,9 @@ docs/DOCUMENTATION_GUIDE.md       已创建
 docs/PROGRESS.md                  已创建
 docs/BUILD_STEPS.md               已创建
 docs/STATUS_REVIEW.md             已创建
+docs/AI_LEARNING_PROMPT.md        已创建
+docs/self/learn.md                已创建
+docs/self/idea.md                 已创建
 docs/ARCHITECTURE.md              未开始
 docs/DATA_MODEL.md                未开始
 docs/API_SPEC.md                  暂缓，等 FastAPI 化后再写

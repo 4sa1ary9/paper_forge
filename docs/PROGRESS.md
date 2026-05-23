@@ -2,15 +2,15 @@
 
 ## 当前阶段
 
-**阶段：Step 10，Research Package Validator Agent 骨架版已完成。**
+**阶段：Step 12，PDF Text Evidence Extractor 已完成。**
 
 当前项目已经从 TypeScript/React/Express 调整为 **Python + Streamlit**。
 
 ## 完成度结论
 
-当前项目已经完成 **Step 10 scaffold MVP**，但还没有完成文档中描述的最终研究包目标。
+当前项目已经完成 **Step 12 scaffold MVP**，但还没有完成文档中描述的最终研究包目标。
 
-- 已完成：单篇论文从 intake 到 package validation 的确定性 workflow，包含 metadata、PDF/TeX 资产、外部来源记录、图片 manifest、代码候选、笔记/术语/疑难点/面试项目模板和研究包状态报告。
+- 已完成：单篇论文从 intake 到 PDF text evidence extraction + deep note planning 的确定性 workflow，包含 metadata、PDF/TeX 资产、外部来源记录、图片 manifest、代码候选、笔记/术语/疑难点/面试项目模板、研究包状态报告、PDF 文本证据图和深度笔记准备计划。
 - 未完成：深度论文笔记生成、术语自动解释、疑难点自动生成、代码到论文方法的真实映射、面试项目适配度判断、RAG、自动 clone、多篇论文批处理。
 - 详细核对见：`docs/STATUS_REVIEW.md`。
 
@@ -134,13 +134,29 @@ uv run python -m pytest
 - Streamlit 工作台已增加 `Write Interview Mapping Scaffold` 按钮。
 - 已实现 Research Package Validator Agent 骨架版：
   - 生成 `notes/package-status.md`；
-  - 检查 `metadata.json`、PDF、图片 manifest 和 notes 产物是否存在；
+  - 检查 `metadata.json`、PDF、图片 manifest、PDF text evidence map 和 notes 产物是否存在；
   - 区分 required、recommended 和 optional 产物；
   - PDF 和图片 manifest 缺失记录为 warning；
   - TeX Source 缺失记录为 optional missing，不阻塞 PDF-based processing；
   - 只检查文件存在状态，不判断内容质量、论文理解深度或项目适配度；
   - 将 `package.validate_research_package` 写入 timeline 和 artifacts。
 - Streamlit 工作台已增加 `Validate Research Package` 按钮。
+- 已实现 PDF Text Evidence Extractor Agent：
+  - 生成 `notes/evidence-map.md`；
+  - 使用 PyMuPDF 从 `raw/paper.pdf` 提取分页文本；
+  - 记录页码、字符数和每页文本 excerpt；
+  - 明确标注 raw text evidence only，不总结、不解释；
+  - 缺少 PDF 时仍写 partial report，保留 timeline 和 artifact；
+  - 将 `pdf.extract_text_evidence` 写入 timeline 和 artifacts。
+- Streamlit 工作台已增加 `Extract PDF Text Evidence` 按钮。
+- 已实现 Deep Note Planner / Readiness Gate：
+  - 生成 `notes/deep-note-plan.md`；
+  - 读取 `notes/package-status.md`、`notes/README.md`、PDF、`notes/evidence-map.md`、图片 manifest、外部来源记录和代码引用文件的存在状态；
+  - 标记 TL;DR、Paper Overview、Background and Motivation、Core Method、Code Mapping、Experiments、Deep Q&A、Limitations 和 Practical Takeaways 的准备度；
+  - 明确标注 readiness gate only，不生成深度解释；
+  - 缺少 required 或 recommended 输入时将 step 标记为 `partial`；
+  - 将 `note.plan_deep_note` 写入 timeline 和 artifacts。
+- Streamlit 工作台已增加 `Plan Deep Note Readiness` 按钮。
 
 ## 当前验证状态
 
@@ -150,7 +166,7 @@ Python 版本已验证通过：
 - 已创建 `.venv` 虚拟环境；
 - 激活提示名为 `agent`；
 - 已生成 `uv.lock`；
-- 执行 `uv run python -m pytest` 通过：21 passed；
+- 执行 `uv run python -m pytest` 通过：25 passed；
 - 真实 intake + asset collection + source enrichment 通过：
   - 输入：`https://arxiv.org/abs/1706.03762`
   - 输出：`attention-is-all-you-need`
@@ -191,6 +207,14 @@ Python 版本已验证通过：
   - 命令：`uv run python scripts/run_pipeline.py https://arxiv.org/abs/1706.03762 https://github.com/harvardnlp/annotated-transformer`
   - 输出：`paper-vault/attention-is-all-you-need/notes/package-status.md`
   - 状态：`completed`
+- 真实 PDF text evidence pipeline 通过：
+  - 命令：`uv run python scripts/run_pipeline.py https://arxiv.org/abs/1706.03762 https://github.com/harvardnlp/annotated-transformer`
+  - 输出：`paper-vault/attention-is-all-you-need/notes/evidence-map.md`
+  - 状态：`completed`
+- 真实 deep note planning pipeline 通过：
+  - 命令：`uv run python scripts/run_pipeline.py https://arxiv.org/abs/1706.03762 https://github.com/harvardnlp/annotated-transformer`
+  - 输出：`paper-vault/attention-is-all-you-need/notes/deep-note-plan.md`
+  - 状态：`completed`
 - Streamlit 已启动：
   - URL：`http://localhost:8501`
   - HTTP 状态：200
@@ -202,25 +226,25 @@ Python 版本已验证通过：
 
 ## 下一步
 
-Step 10 已跑通。下一步不要直接做未经验证的深度生成，建议先确认 **深度笔记生成前的质量门槛**：
+Step 12 已跑通。下一步可以开始做一个保守版 **Deep Note Writer**，但仍然只允许引用 `notes/evidence-map.md` 中已有页码证据：
 
 ```text
-notes/package-status.md
-  -> required / recommended / optional 是否齐全
-  -> 哪些产物需要人工补齐或复查
-  -> 再决定是否进入深度笔记生成
+notes/deep-note-plan.md + notes/evidence-map.md + notes/README.md
+  -> 只填充 ready 章节
+  -> 每段结论保留页码证据
+  -> 不确定内容显式标注
 ```
 
-这一步可以避免在研究包输入还不完整时，直接进入深度内容生成。
+这一步可以从 TL;DR 和 Paper Overview 开始，不要一次性生成完整深度报告。
 
 推荐下一阶段：
 
 ```text
-Step 11: Deep Note Planner / Readiness Gate
-  -> 读取 package-status.md 和已有 scaffold
-  -> 判断哪些章节有证据支撑
-  -> 标记哪些章节不能自动生成
-  -> 写 notes/deep-note-plan.md
+Step 13: Deep Note Writer MVP
+  -> 读取 deep-note-plan.md 和 evidence-map.md
+  -> 只处理 ready 章节
+  -> 更新 notes/README.md
+  -> 保留 evidence note 和人工复查标记
 ```
 
 ## 暂不做

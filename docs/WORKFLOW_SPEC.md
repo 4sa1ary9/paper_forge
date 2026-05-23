@@ -11,6 +11,8 @@ PaperForge Agent 把一个论文输入转换成一个完整研究包。
   -> 外部资料增强
   -> 代码关联分析
   -> 图表和文本提取
+  -> PDF 文本证据提取
+  -> 深度笔记准备度计划
   -> 深度笔记生成
   -> 术语和疑难点提取
   -> 面试项目映射
@@ -22,7 +24,7 @@ PaperForge Agent 把一个论文输入转换成一个完整研究包。
 
 ## 1.1 当前实现边界
 
-截至 Step 10，当前 Python 版已经跑通的是 **scaffold research package**，不是最终深度研究包。
+截至 Step 12，当前 Python 版已经跑通的是 **scaffold research package + PDF text evidence map + deep note readiness gate**，不是最终深度研究包。
 
 已经实现：
 
@@ -30,13 +32,15 @@ PaperForge Agent 把一个论文输入转换成一个完整研究包。
 - PDF 和 TeX Source 资产收集；
 - 外部来源记录；
 - PDF 图片提取和 manifest；
+- PDF 分页文本证据提取；
 - GitHub 候选 URL 整理；
 - 笔记、术语、疑难点和面试项目映射模板；
-- 研究包文件存在性验证。
+- 研究包文件存在性验证；
+- 深度笔记准备度计划。
 
 尚未实现：
 
-- PDF 正文解析和段落级 evidence map；
+- 段落级 evidence map 和语义检索；
 - 深度论文解释；
 - 自动术语抽取和解释；
 - 自动疑难点生成；
@@ -291,6 +295,35 @@ fig4_ablation_context_length.png
 - 将图片文件和 manifest 写入 artifacts；
 - 缺少 PDF 时跳过本步骤并记录 timeline，不阻塞已有 metadata、source log 和后续人工处理。
 
+## 6.1 PDF 文本证据提取流程
+
+### 输出
+
+```text
+notes/evidence-map.md
+```
+
+### 目标
+
+把 PDF 正文转换成后续深度笔记可以引用的页码级证据入口。
+
+当前 Python MVP 先做 PDF Text Evidence Extractor：
+
+- 使用 PyMuPDF 从 `raw/paper.pdf` 提取分页文本；
+- 写入 page inventory table，记录页码、字符数和文本是否可用；
+- 写入每页 text excerpt；
+- 明确标注 raw text evidence only，不总结、不解释；
+- 缺少 PDF 时仍写 partial report；
+- 将 `pdf.extract_text_evidence` 写入 timeline；
+- 将 `notes/evidence-map.md` 写入 artifacts。
+
+### 规则
+
+- evidence map 只保存证据入口，不生成论文结论；
+- 下游深度笔记必须引用 evidence map 的页码；
+- 如果 PDF 没有可抽取文本，应标记为 partial，后续可以考虑 OCR 或 TeX Source 解析；
+- 单页 excerpt 需要限制长度，避免一个 Markdown 文件过大。
+
 ## 7. 深度笔记生成流程
 
 ### 主输出
@@ -339,6 +372,15 @@ notes/README.md
 - 引用 `notes/external-sources.md`、`images/manifest.md`、`notes/code-references.md`；
 - 明确标注 `Draft status: scaffold only; deep explanation not generated yet.`；
 - 不生成 TL;DR、方法解释、实验结论或 practical takeaway 的深度内容。
+
+当前 Python MVP 已做 Deep Note Planner / Readiness Gate：
+
+- 生成 `notes/deep-note-plan.md`；
+- 读取 `notes/package-status.md` 和已有 scaffold 文件；
+- 检查 `raw/paper.pdf`、`notes/evidence-map.md`、`images/manifest.md`、`notes/external-sources.md` 和 `notes/code-references.md` 是否存在；
+- 标记哪些主笔记章节可以进入后续 LLM 生成，哪些章节仍然 blocked；
+- 明确标注 readiness gate only，不生成深度解释；
+- 缺少 required 或 recommended 输入时将 `note.plan_deep_note` 标记为 `partial`。
 
 ### 质量规则
 
@@ -503,6 +545,7 @@ notes/package-status.md
 - 检查 `metadata.json` 是否存在；
 - 检查 `raw/paper.pdf` 是否存在，缺失时记录为 warning；
 - 检查 `images/manifest.md` 是否存在，缺失时记录为 warning；
+- 检查 `notes/evidence-map.md` 是否存在，缺失时记录为 warning；
 - 检查 `notes/external-sources.md`、`notes/code-references.md`、`notes/README.md`、`notes/terminology.md`、`notes/doubts.md`、`notes/interview-project.md` 是否存在；
 - 检查 `raw/source.tar.gz` 和 `raw/tex-source/` 是否存在，但只标记为 optional，不作为失败条件；
 - 只判断文件是否存在，不判断笔记质量、论文理解深度或项目适配度。
@@ -590,5 +633,7 @@ Streamlit 工作台应该把 timeline 渲染成可视化 plan 或任务时间线
 - `notes/interview-project.md` 给出具体项目判断；
 - 每个外部来源都有 URL 和可靠性标签。
 - `notes/package-status.md` 存在，并清楚列出 required、recommended 和 optional 产物状态。
+- `notes/evidence-map.md` 存在，并提供页码级文本证据入口。
+- `notes/deep-note-plan.md` 存在，并清楚列出各主笔记章节的生成准备度。
 
-当前 Step 10 只满足其中的文件存在性部分；深度方法解释、可复用术语、未解决问题和具体项目判断仍未满足。
+当前 Step 12 满足文件存在性、页码级文本证据和深度笔记准备度计划部分；深度方法解释、可复用术语、未解决问题和具体项目判断仍未满足。

@@ -1171,6 +1171,10 @@ paper-vault/<slug>/
 
 - `paperforge/models.py`
 
+修改已有 agent：
+
+- `paperforge/package_validator.py`
+
 修改工作台：
 
 - `app.py`
@@ -1255,7 +1259,7 @@ compileall: app.py paperforge tests scripts passed
 
 下一步建议先确认 **深度笔记生成前的质量门槛**，再决定是否进入深度内容生成。
 
-## Documentation Update: 完成度核对
+## Documentation Update: 完成度核对（Step 10 时点）
 
 ### 目标
 
@@ -1276,7 +1280,7 @@ compileall: app.py paperforge tests scripts passed
 - `docs/AI_LEARNING_PROMPT.md`
 - `docs/self/learn.md`
 
-### 当前结论
+### 当时结论
 
 ```text
 Stage: Step 10 completed
@@ -1284,8 +1288,240 @@ Completion level: scaffold MVP completed
 Full project vision: not completed
 ```
 
-当前项目已经按 Step 10 文档目标跑通，但还没有完成深度论文笔记、自动术语解释、疑难点生成、代码分析、面试项目适配度判断和 RAG 等长期规划。
+当时项目已经按 Step 10 文档目标跑通，但还没有完成深度论文笔记、自动术语解释、疑难点生成、代码分析、面试项目适配度判断和 RAG 等长期规划。后续 Step 11 已继续补上 deep note readiness gate。
 
 ### 下一步建议
 
 下一步建议做 **Step 11: Deep Note Planner / Readiness Gate**，先判断哪些章节有证据支撑，再决定是否进入 LLM 深度内容生成。
+
+## Step 11: Deep Note Planner / Readiness Gate
+
+### 目标
+
+在进入 LLM 深度笔记生成之前，先生成一个确定性的准备度计划：
+
+```text
+notes/package-status.md + notes/README.md + raw/paper.pdf + images/manifest.md
+  -> notes/deep-note-plan.md
+  -> 更新 timeline 和 artifacts
+```
+
+本阶段仍然不生成 TL;DR、方法解释、实验解读或 practical takeaway，只判断哪些章节拥有基础证据，哪些章节必须继续保持 blocked。
+
+### 为什么这样做
+
+Step 10 的 `package-status.md` 只说明文件是否存在，还不能说明哪些笔记章节可以安全生成。直接让 LLM 写深度笔记会让系统重新回到不可验证的总结工具。
+
+所以 Step 11 先做一个 readiness gate：
+
+- required 输入缺失时不能进入深度生成；
+- PDF 和图片 manifest 缺失时，Core Method 和 Experiments 不能自动生成；
+- Code Mapping 即使有候选文件，也只能标记为 review-ready，因为当前仍不 clone 仓库；
+- Deep Q&A 和 Practical Takeaways 必须等方法和实验笔记存在后再生成。
+
+### 已完成文件
+
+新增核心模块：
+
+- `paperforge/deep_note_planner.py`
+
+修改工作台：
+
+- `app.py`
+
+修改流水线脚本：
+
+- `scripts/run_pipeline.py`
+
+新增测试：
+
+- `tests/test_deep_note_planner.py`
+
+更新文档：
+
+- `README.md`
+- `docs/DOCUMENTATION_GUIDE.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/PROGRESS.md`
+- `docs/BUILD_STEPS.md`
+- `docs/STATUS_REVIEW.md`
+- `docs/AI_LEARNING_PROMPT.md`
+- `docs/self/learn.md`
+
+### 当前能力
+
+已支持：
+
+- 生成 `notes/deep-note-plan.md`；
+- 检查 `notes/package-status.md`、`notes/README.md`、`raw/paper.pdf`、`images/manifest.md`、`notes/external-sources.md` 和 `notes/code-references.md` 是否存在；
+- 输出 readiness input table；
+- 输出 section readiness table；
+- 标记 TL;DR、Paper Overview、Background and Motivation、Core Method、Code Mapping、Experiments、Deep Q&A、Limitations 和 Practical Takeaways 的状态；
+- 缺少 required 或 recommended 输入时将 step 标记为 `partial`；
+- 将 `note.plan_deep_note` 写入 timeline；
+- 将 `notes/deep-note-plan.md` 写入 artifacts；
+- Streamlit 页面增加 `Plan Deep Note Readiness` 按钮。
+
+### 验证方式
+
+运行测试：
+
+```powershell
+uv run python -m pytest
+```
+
+运行真实流水线：
+
+```powershell
+uv run python scripts/run_pipeline.py https://arxiv.org/abs/1706.03762 https://github.com/harvardnlp/annotated-transformer
+```
+
+当前验证结果：
+
+```text
+pytest: 23 passed
+真实样例: https://arxiv.org/abs/1706.03762 -> note.plan_deep_note completed
+输出: paper-vault/attention-is-all-you-need/notes/deep-note-plan.md
+```
+
+### 这一阶段没有做什么
+
+这些能力继续留到后续步骤：
+
+- PDF 正文提取和段落级 evidence map；
+- 自动生成深度论文解释；
+- 自动抽取和解释术语；
+- 自动生成疑难点；
+- 自动判断面试项目适配度；
+- clone 或分析第三方代码仓库。
+
+### 下一步建议
+
+下一步建议做 **Step 12: PDF Text Evidence Extractor**：
+
+```text
+raw/paper.pdf
+  -> notes/evidence-map.md
+  -> 为 Deep Note Writer 提供可引用的页码和文本证据
+```
+
+## Step 12: PDF Text Evidence Extractor
+
+### 目标
+
+在进入 Deep Note Writer 之前，先从 PDF 提取可引用的分页文本证据：
+
+```text
+raw/paper.pdf
+  -> notes/evidence-map.md
+  -> 更新 timeline 和 artifacts
+  -> Deep Note Planner 使用 evidence map 判断章节准备度
+```
+
+本阶段仍然不总结论文、不解释方法、不调用 LLM。它只提供原文证据入口，让后续深度笔记可以引用页码和文本。
+
+### 为什么这样做
+
+Step 11 的 `deep-note-plan.md` 只能根据文件是否存在判断章节准备度。如果没有正文证据，后续 LLM 生成很容易变成泛泛总结。
+
+所以 Step 12 先把 PDF 正文变成一个轻量 evidence map：
+
+- 每页记录字符数和是否有可抽取文本；
+- 每页保留一个文本 excerpt；
+- 下游笔记必须引用这些页码证据；
+- 缺少 PDF 时仍然写 partial report，避免静默失败。
+
+### 已完成文件
+
+新增核心模块：
+
+- `paperforge/pdf_text_extractor.py`
+
+修改数据模型：
+
+- `paperforge/models.py`
+
+修改工作台：
+
+- `app.py`
+
+修改流水线脚本：
+
+- `scripts/run_pipeline.py`
+
+新增测试：
+
+- `tests/test_pdf_text_extractor.py`
+
+更新文档：
+
+- `README.md`
+- `docs/PROJECT_GUIDE.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/PROGRESS.md`
+- `docs/BUILD_STEPS.md`
+- `docs/STATUS_REVIEW.md`
+- `docs/DOCUMENTATION_GUIDE.md`
+- `docs/AI_LEARNING_PROMPT.md`
+- `docs/self/learn.md`
+
+### 当前能力
+
+已支持：
+
+- 使用 PyMuPDF 从 `raw/paper.pdf` 提取分页文本；
+- 生成 `notes/evidence-map.md`；
+- 写入论文标题、提取状态、PDF 状态和 scope；
+- 写入 page inventory table；
+- 写入每页 text excerpt；
+- 每页 excerpt 最多保留 2000 字符，避免 evidence map 过大；
+- 缺少 PDF 时生成 partial evidence map；
+- Research Package Validator 将 `notes/evidence-map.md` 作为 recommended artifact 检查；
+- 将 `pdf.extract_text_evidence` 写入 timeline；
+- 将 `notes/evidence-map.md` 写入 artifacts；
+- Streamlit 页面增加 `Extract PDF Text Evidence` 按钮；
+- `scripts/run_pipeline.py` 在 deep note planning 之前执行 PDF text evidence extraction。
+
+### 验证方式
+
+运行测试：
+
+```powershell
+uv run python -m pytest
+```
+
+运行真实流水线：
+
+```powershell
+uv run python scripts/run_pipeline.py https://arxiv.org/abs/1706.03762 https://github.com/harvardnlp/annotated-transformer
+```
+
+当前验证结果：
+
+```text
+pytest: 25 passed
+compileall: app.py paperforge tests scripts passed
+真实样例: https://arxiv.org/abs/1706.03762 -> pdf.extract_text_evidence completed
+输出: paper-vault/attention-is-all-you-need/notes/evidence-map.md
+```
+
+### 这一阶段没有做什么
+
+这些能力继续留到后续步骤：
+
+- 自动生成深度论文解释；
+- 自动抽取和解释术语；
+- 自动生成疑难点；
+- 自动判断面试项目适配度；
+- clone 或分析第三方代码仓库；
+- RAG / 向量检索。
+
+### 下一步建议
+
+下一步建议做 **Step 13: Deep Note Writer MVP**：
+
+```text
+notes/deep-note-plan.md + notes/evidence-map.md + notes/README.md
+  -> 只填充 ready 章节
+  -> 保留页码证据和人工复查标记
+```

@@ -7,12 +7,14 @@ import streamlit as st
 
 from paperforge.asset_collector import run_asset_collection
 from paperforge.code_linker import run_code_linking
+from paperforge.deep_note_planner import run_deep_note_planning
 from paperforge.doubts_agent import run_doubts_scaffold
 from paperforge.interview_mapper import run_interview_mapping_scaffold
 from paperforge.intake_agent import run_paper_intake
 from paperforge.note_writer import run_note_writing
 from paperforge.package_validator import run_package_validation
 from paperforge.pdf_image_extractor import run_pdf_image_extraction
+from paperforge.pdf_text_extractor import run_pdf_text_extraction
 from paperforge.source_enrichment import run_source_enrichment
 from paperforge.storage import get_data_dir, list_jobs
 from paperforge.terminology_agent import run_terminology_scaffold
@@ -48,8 +50,10 @@ def main() -> None:
             10. 生成术语库骨架
             11. 生成疑难点骨架
             12. 生成面试项目映射骨架
-            13. 验证研究包状态
-            14. 展示 timeline 和 artifacts
+            13. 提取 PDF 文本证据
+            14. 验证研究包状态
+            15. 规划深度笔记生成准备度
+            16. 展示 timeline 和 artifacts
             """
         )
 
@@ -136,10 +140,20 @@ def main() -> None:
             active_job = run_interview_mapping_scaffold(active_job)
         st.success("Interview mapping scaffold written.")
 
+    if active_job.metadata and st.button("Extract PDF Text Evidence"):
+        with st.spinner("PDF Text Evidence Extractor 正在提取正文证据..."):
+            active_job = run_pdf_text_extraction(active_job)
+        st.success(f"PDF text evidence extraction finished: {active_job.status}")
+
     if active_job.metadata and st.button("Validate Research Package"):
         with st.spinner("Research Package Validator 正在检查研究包产物..."):
             active_job = run_package_validation(active_job)
         st.success(f"Research package validation finished: {active_job.status}")
+
+    if active_job.metadata and st.button("Plan Deep Note Readiness"):
+        with st.spinner("Deep Note Planner 正在判断深度笔记准备度..."):
+            active_job = run_deep_note_planning(active_job)
+        st.success(f"Deep note planning finished: {active_job.status}")
 
     render_job(active_job, data_dir)
 

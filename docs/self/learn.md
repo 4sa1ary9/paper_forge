@@ -14,7 +14,7 @@
 - 读完论文后，不知道能不能把它变成面试项目
 - 笔记质量没标准——到底"读懂"了没有，缺少可检验的证据链
 
-**它做了什么**：把"研究一篇论文"拆成 10 个当前已实现的 agent stage，每个 stage 有明确的输入、输出、状态，最终落盘成一个规范的目录结构。
+**它做了什么**：把"研究一篇论文"拆成 12 个当前已实现的 agent stage，每个 stage 有明确的输入、输出、状态，最终落盘成一个规范的目录结构。
 
 
 ## 2. 为什么它是 Agent 项目，不是普通脚本？
@@ -36,7 +36,7 @@
 
 ## 3. Agent 工作流阶段
 
-10 个当前已实现 stage，按依赖关系形成一条带分支的流水线：
+12 个当前已实现 stage，按依赖关系形成一条带分支的流水线：
 
 ```
 用户输入
@@ -50,9 +50,11 @@
   → ⑧ Doubts Agent（疑难点骨架）
   → ⑨ Interview Mapper（面试项目映射骨架）
   → ⑩ Package Validator（研究包完整性检查）
+  → ⑪ PDF Text Evidence Extractor（PDF 文本证据）
+  → ⑫ Deep Note Planner（深度笔记准备度计划）
 ```
 
-步骤 ②-⑨ 之间耦合很弱——除了都需要 ① 的 metadata 作为前置，它们彼此之间基本独立。⑥⑦⑧⑨ 甚至可以并行执行。
+步骤 ②-⑨ 之间耦合很弱——除了都需要 ① 的 metadata 作为前置，它们彼此之间基本独立。⑥⑦⑧⑨ 甚至可以并行执行。⑩、⑪ 和 ⑫ 更像验收、证据提取与规划阶段：它们读取前面落盘的产物，判断研究包是否齐全、提取 PDF 文本证据、规划后续哪些深度笔记章节可以进入生成。
 
 
 ## 4. 为什么三层分离？
@@ -71,7 +73,7 @@ code-vault/          ← 第三方代码仓库（计划中，暂未实现）
 - **面试可讲**：这是典型的 "separation of concerns"，体现了工程意识
 
 
-## 5. 当前进度：Step 10 已跑通
+## 5. 当前进度：Step 12 已跑通
 
 **已完整实现**（有真实数据验证过）：
 - ① Paper Intake：arXiv API 调用 → metadata 解析 → workspace 创建 ✅
@@ -79,6 +81,8 @@ code-vault/          ← 第三方代码仓库（计划中，暂未实现）
 - ③ PDF Image Extractor：PyMuPDF 提取图片 + 生成 manifest ✅
 - ④ Source Enrichment：整理外部资料 markdown ✅
 - ⑤ Code Linker：从 metadata 和 external sources 提取 GitHub URL ✅
+- ⑪ PDF Text Evidence Extractor：从 PDF 提取页码级文本证据 ✅
+- ⑫ Deep Note Planner：根据 package status 和 evidence 文件判断深度笔记章节准备度 ✅
 
 **骨架实现**（生成的是带占位符的模板文件，不是真实内容）：
 - ⑥ Note Writer：生成 `notes/README.md` 框架，所有章节标注 "Not generated yet"
@@ -86,6 +90,8 @@ code-vault/          ← 第三方代码仓库（计划中，暂未实现）
 - ⑧ Doubts Agent：生成 `notes/doubts.md` 模板
 - ⑨ Interview Mapper：生成 `notes/interview-project.md` 模板
 - ⑩ Package Validator：文件存在性检查
+- ⑪ PDF Text Evidence Extractor：evidence map，不总结、不解释
+- ⑫ Deep Note Planner：readiness gate，不生成深度正文
 
 **暂不做**：
 - clone 仓库、深度 LLM 笔记生成、自动适配度判断、FastAPI 后端、React 前端
@@ -95,7 +101,7 @@ code-vault/          ← 第三方代码仓库（计划中，暂未实现）
 
 # 阶段二：Agent 模块深度拆解
 
-我把 10 个模块逐一过。先看共性，再看个性。
+我把 12 个模块逐一过。先看共性，再看个性。
 
 ## 共性设计模式
 
@@ -282,6 +288,30 @@ OPTIONAL    = [source.tar.gz, tex-source/]
 **当前状态**：完整实现。文件存在性检查全部可跑。
 
 
+## 模块 11: PDF Text Evidence Extractor Agent
+
+**输入**：`ResearchJob`（需要 `raw/paper.pdf` 存在）
+**输出**：`notes/evidence-map.md`
+
+**关键设计**：它只提取页码级文本证据，不生成总结。`evidence-map.md` 记录每页字符数和 text excerpt，后续 Deep Note Writer 必须引用这里的页码证据。
+
+**为什么 partial report 有价值**：如果 PDF 缺失或没有可抽取文本，agent 仍然写出 `notes/evidence-map.md`，把问题显式记录到 timeline 和 artifact。这样后续可以选择补 PDF、OCR 或 TeX Source 解析，而不是静默失败。
+
+**当前状态**：轻量实现。能从 PDF 提取分页文本 excerpt，但还没有段落切分、公式定位、语义 chunk 或向量索引。
+
+
+## 模块 12: Deep Note Planner Agent
+
+**输入**：`ResearchJob`（检查 `notes/package-status.md`、`notes/README.md`、`raw/paper.pdf`、`images/manifest.md` 等 readiness 输入）
+**输出**：`notes/deep-note-plan.md`
+
+**关键设计**：它是深度生成前的 readiness gate，而不是内容生成器。它只回答"哪些章节现在有足够基础证据可以进入下一阶段"，并把 Deep Q&A、Practical Takeaways 这类依赖前置内容的章节保持为 `blocked`。
+
+**为什么这一步重要**：它避免了刚完成 scaffold 就直接让 LLM 写完整深度笔记。当前系统已经有页码级 evidence map，但还没有段落级语义索引和人工复查，所以 planner 仍然必须保守。
+
+**当前状态**：骨架实现。能生成章节准备度计划，但不提取 PDF 正文、不生成深度解释。
+
+
 # 阶段三：代码级深读
 
 ## 1. `models.py`——数据模型
@@ -320,7 +350,7 @@ class AgentStep:
 - `asdict()` 一行序列化到 JSON（在 `to_dict` 函数中）
 - 时间字段用 `str | None` 而非 `datetime`——因为 JSON 不能直接存 datetime 对象，存 ISO 字符串更简单
 
-**`ArtifactKind` 的分类**：18 种类型全覆盖了研究过程中可能产生的所有文件类型。不是随手写的——每个 kind 对应一个 agent 模块的产出物。
+**`ArtifactKind` 的分类**：当前列出 12 种类型，覆盖了现有 Step 12 scaffold workflow 会产生的文件类型。不是随手写的——每个 kind 对应一个 agent 模块的产出物，例如 metadata、pdf、figure、note、code_reference、package_status、evidence_map。
 
 **`PaperMetadata` 的 `status` 字段**：只有两个值 `intake_completed` / `intake_partial`。这是一个有意思的设计——它不在 `PaperMetadata` 上做更多状态区分，而是把更细粒度的状态放在 `ResearchJob.status` 和每个 `AgentStep.state` 上。
 
@@ -435,7 +465,7 @@ active_job_id = st.session_state.get("active_job_id", jobs[0].id)  # 读取时
 
 ### 电梯演讲版（30 秒）
 
-> "PaperForge 是一个论文研究 Agent——你把论文 URL 给它，它自动完成身份识别、PDF 下载、图片提取、代码关联、笔记生成、术语提取和面试项目映射，最终产出一个结构化的研究包。当前 Python 版已跑通完整 scaffold 闭环，21 个测试通过。"
+> "PaperForge 是一个论文研究 Agent——你把论文 URL 给它，它自动完成身份识别、PDF 下载、图片提取、代码关联、笔记生成、术语提取、面试项目映射、PDF 文本证据提取和深度笔记准备度计划，最终产出一个结构化的研究包。当前 Python 版已跑通完整 scaffold 闭环，25 个测试通过。"
 
 ### 深度介绍版（2 分钟）
 
@@ -443,7 +473,7 @@ active_job_id = st.session_state.get("active_job_id", jobs[0].id)  # 读取时
 >
 > 所以我设计了 PaperForge，它是一个 agentic workflow 系统。核心设计是把'研究一篇论文'拆成多个可追踪的步骤，每个步骤有独立的状态机——pending、running、completed、partial、failed 等七种状态。PDF 下载失败不影响 metadata 写入，TeX 源码缺失自动切换到 PDF-based processing。所有中间产物——metadata、PDF、图片、笔记——都持久化到一个规范的目录结构里。
 >
-> 技术栈是 Python + Streamlit + PyMuPDF，数据模型用了 dataclass + Literal 类型。当前完整的 intake、资产下载、图片提取、代码关联和包验证已经跑通，笔记生成等模块做了 scaffold——也就是生成了完整的章节框架和数据管道，后续往里面灌 LLM 生成的内容就行。
+> 技术栈是 Python + Streamlit + PyMuPDF，数据模型用了 dataclass + Literal 类型。当前完整的 intake、资产下载、图片提取、代码关联、PDF 文本证据、包验证和深度笔记 readiness gate 已经跑通，笔记生成等模块做了 scaffold——也就是生成了完整的章节框架和数据管道，后续可以基于 evidence map 引入 LLM 生成内容。
 >
 > 我真正做的设计决策包括：状态机的七种状态而非简单的成功/失败、纯函数式的 job 状态流转、scaffold-first 的开发策略——先验证管道再引入 LLM。这些让系统在对 LLM 依赖最小的前提下，获得了完整的可观测性和容错能力。"
 
@@ -461,13 +491,13 @@ active_job_id = st.session_state.get("active_job_id", jobs[0].id)  # 读取时
 
 ### 2. "你的 Agent 是怎么做 planning 的？"
 
-**诚实回答**：当前是静态的、预定义的步骤序列，不是 LLM 动态生成的 plan。PROJECT_GUIDE.md 和 WORKFLOW_SPEC.md 定义好了当前 scaffold workflow 的步骤排列，后续深度生成和动态 planning 还没实现。
+**诚实回答**：当前是静态的、预定义的步骤序列，不是 LLM 动态生成的 plan。PROJECT_GUIDE.md 和 WORKFLOW_SPEC.md 定义好了当前 scaffold workflow 的步骤排列。Step 12 之后的 Deep Note Planner 是规则驱动的 readiness plan，用来判断章节准备度；后续 LLM 动态 planning 还没实现。
 
 **但要补一句**：这个设计是有意的——在引入 LLM 做动态 planning 之前，先把确定性的流程跑通。后续如果要加 LLM planning，会在 intake 阶段让 LLM 判断"这篇论文理论上需要哪些步骤"，与预定义模板合并。
 
 ### 3. "每篇论文的处理流程是有向无环图（DAG）还是线性流水线？"
 
-**回答**：介于两者之间。严格来说是一个 DAG——步骤 ②-⑨ 都依赖 ①，但它们彼此之间基本独立。当前 Streamlit 界面是手动触发的线性执行，但代码层面各模块的耦合只有 `job.metadata` 这一个点。
+**回答**：介于两者之间。严格来说是一个 DAG——步骤 ②-⑨ 都依赖 ①，但它们彼此之间基本独立；⑩、⑪ 和 ⑫ 依赖前面产物的文件状态和 PDF 资产。当前 Streamlit 界面是手动触发的线性执行，但代码层面各模块的耦合主要围绕 `ResearchJob` 和落盘 artifact。
 
 **如果要并行化**：只需把 `app.py` 中的按钮改成批量执行，因为每个 `run_xxx(job)` 都是纯函数，可以串成链 `run_b(run_a(job))`。
 
@@ -537,7 +567,24 @@ active_job_id = st.session_state.get("active_job_id", jobs[0].id)  # 读取时
 
 # 阶段五：实战延伸——如何继续迭代
 
-## 1. 下一步 Deep Note Generation 设计
+## 1. 下一步 Deep Note Writer MVP 设计
+
+当前可以开始做保守版 Deep Note Writer，但不能一次性生成完整深度报告。更稳的下一步是：
+
+```
+Step 13: Deep Note Writer MVP
+  Input:  notes/README.md + notes/deep-note-plan.md + notes/evidence-map.md
+  Process: 只填充 deep-note-plan 标记为 ready 的章节
+  Output: notes/README.md
+  Guard:  每段结论保留页码证据和人工复查标记
+```
+
+为什么先做 MVP：
+- 现在已经有 `notes/evidence-map.md`，可以让生成内容引用页码；
+- 先从 TL;DR、Paper Overview 这类 ready 章节开始，风险更小；
+- Deep Q&A、Practical Takeaways 仍然依赖前置方法和实验笔记，不能提前生成。
+
+## 2. 后续 Deep Note Generation 设计
 
 **什么时候引入 LLM，什么时候不该**：
 - **不该引入 LLM 的**：arxiv_client（API 调用）、asset_collector（下载）、pdf_image_extractor（PyMuPDF）、package_validator（文件检查）——这些都是确定的、可靠的、不需要"智能"的
@@ -545,16 +592,16 @@ active_job_id = st.session_state.get("active_job_id", jobs[0].id)  # 读取时
 
 **设计建议**：
 ```
-Step N: Deep Note Generation
-  Input:  notes/README.md (scaffold) + raw/paper.pdf (PDF text via PyMuPDF)
-  Process: LLM reads each section scaffold, fills in content
+Step 13: Deep Note Writer
+  Input:  notes/README.md + notes/deep-note-plan.md + notes/evidence-map.md
+  Process: LLM 只填充 deep-note-plan 标记为 ready 的章节
   Output: notes/README.md (updated, with content)
-  Guard:   标注"AI 生成，人工校对"——不确定结论标注置信度
+  Guard:  标注"AI 生成，人工校对"；不确定结论标注置信度和证据位置
 ```
 
 **为什么要从 scaffold 出发，而不是让 LLM 从零写？** Scaffold 提供了结构和约束——LLM 知道"TL;DR 写在这，方法写在这"，而不是自由发挥。这增加了可控性和一致性。
 
-## 2. 从 Streamlit 迁移到 FastAPI
+## 3. 从 Streamlit 迁移到 FastAPI
 
 **哪些模块零改动复用**：`paperforge/` 下所有 agent 模块——`run_xxx(job)` 是纯函数，不依赖 Streamlit。
 
@@ -565,7 +612,7 @@ Step N: Deep Note Generation
 
 `storage.py` 需要关注并发安全（当前 JSON file-per-record 不是线程安全的），但接口不变。
 
-## 3. 如何加入 RAG
+## 4. 如何加入 RAG
 
 当前项目已经是 RAG 的绝佳数据基础：
 - `notes/README.md` → 可检索的笔记文本
@@ -578,7 +625,7 @@ Step N: Deep Note Generation
 
 **面试关联**：RAG 是面试高频话题。你可以说"我的研究包目录结构天然支持 RAG——每个笔记文件都有明确的证据来源标注，可以按证据链接追溯到原文。"
 
-## 4. 面试话题关联
+## 5. 面试话题关联
 
 | 面试话题 | 项目对应点 |
 |---------|-----------|

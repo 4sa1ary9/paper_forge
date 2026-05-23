@@ -29,6 +29,7 @@ REQUIRED_ARTIFACTS = [
 RECOMMENDED_ARTIFACTS = [
     ("Paper PDF", "raw/paper.pdf"),
     ("Image manifest", "images/manifest.md"),
+    ("PDF text evidence map", "notes/evidence-map.md"),
 ]
 
 OPTIONAL_ARTIFACTS = [

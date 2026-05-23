@@ -54,9 +54,9 @@ PaperForge Agent 不能被包装成普通 ChatGPT 套壳。它的 agent 特征�
 
 ### 当前完成度
 
-当前代码已经完成 **单篇论文 scaffold MVP**：
+当前代码已经完成 **单篇论文 scaffold MVP + PDF text evidence map + deep note readiness gate**：
 
-- 可以跑通 intake -> asset collection -> source enrichment -> PDF image extraction -> code linking -> note scaffold -> terminology scaffold -> doubts scaffold -> interview mapping scaffold -> package validation；
+- 可以跑通 intake -> asset collection -> source enrichment -> PDF image extraction -> code linking -> note scaffold -> terminology scaffold -> doubts scaffold -> interview mapping scaffold -> package validation -> PDF text evidence extraction -> deep note planning；
 - 所有产物都能落盘；
 - agent timeline 和 artifacts 能记录每一步状态；
 - 真实 arXiv 样例已经验证。
@@ -68,6 +68,8 @@ PaperForge Agent 不能被包装成普通 ChatGPT 套壳。它的 agent 特征�
 - `notes/doubts.md` 仍是疑难点模板，不是真实阅读疑问；
 - `notes/interview-project.md` 仍是项目映射模板，不是适配度判断；
 - `notes/package-status.md` 只检查文件是否存在，不评估内容质量。
+- `notes/evidence-map.md` 只提供页码级文本证据，不生成解释。
+- `notes/deep-note-plan.md` 只判断章节准备度，不生成深度正文。
 
 所以当前版本适合展示 agent workflow、状态管理、产物规范和失败容错；还不适合宣称已经自动完成深度论文研究。
 
@@ -348,6 +350,31 @@ code-vault/
 - recommended 产物 warning；
 - optional 产物缺失记录；
 - `notes/package-status.md` 状态报告；
+- `notes/evidence-map.md` recommended 状态；
+- timeline 和 artifact 记录。
+
+### Deep Note Planner Agent
+
+负责在深度笔记生成之前做 readiness gate。
+
+输出内容：
+
+- `notes/deep-note-plan.md`；
+- readiness input table；
+- 主笔记章节的 ready / blocked / review-ready 状态；
+- 缺失输入清单；
+- 建议的后续生成顺序。
+
+### PDF Text Evidence Extractor Agent
+
+负责从 PDF 提取可引用的页码级文本证据。
+
+输出内容：
+
+- `notes/evidence-map.md`；
+- page inventory；
+- 每页 text excerpt；
+- PDF 缺失或无可抽取文本时的 partial report；
 - timeline 和 artifact 记录。
 
 ## 11. 产品界面形态
@@ -372,11 +399,13 @@ code-vault/
 - `arxiv_client.py`：负责论文搜索和元信息解析。
 - `asset_collector.py`：负责下载 PDF、TeX Source，并尝试解压源码。
 - `code_linker.py`：负责从 metadata 和 external sources 整理 GitHub 候选仓库。
+- `deep_note_planner.py`：负责生成深度笔记准备度计划，不做深度解释。
 - `doubts_agent.py`：负责生成 `notes/doubts.md` 的结构化模板。
 - `interview_mapper.py`：负责生成 `notes/interview-project.md` 的结构化模板。
 - `intake_agent.py`：负责 intake 工作流。
 - `note_writer.py`：负责生成主论文笔记骨架，不做未经验证的深度解释。
 - `pdf_image_extractor.py`：负责从 `raw/paper.pdf` 提取图片并生成 `images/manifest.md`。
+- `pdf_text_extractor.py`：负责从 `raw/paper.pdf` 提取分页文本并生成 `notes/evidence-map.md`。
 - `source_enrichment.py`：负责整理外部资料 URL、本地 PDF/TeX 状态和来源可靠性标签。
 - `terminology_agent.py`：负责生成 `notes/terminology.md` 的结构化模板。
 - `storage.py`：负责保存和读取本地文件。
@@ -424,7 +453,7 @@ code-vault/
 
 当前版本的诚实边界：
 
-> 当前版本已经跑通 scaffold 研究包闭环，但深度论文内容生成和项目适配度判断还没有实现。这个边界是有意保留的，因为系统先要保证输入资产、状态流转、产物落盘和质量门槛可靠。
+> 当前版本已经跑通 scaffold 研究包闭环、PDF 文本证据提取和深度笔记准备度计划，但深度论文内容生成和项目适配度判断还没有实现。这个边界是有意保留的，因为系统先要保证输入资产、状态流转、产物落盘、质量门槛和证据准备度可靠。
 
 ## 15. 开发原则
 

@@ -22,6 +22,7 @@ def test_package_validator_writes_complete_status_with_optional_tex_missing(monk
         "terminology.md",
         "doubts.md",
         "interview-project.md",
+        "evidence-map.md",
     ]:
         (notes_dir / filename).write_text(f"# {filename}\n", encoding="utf-8")
 
@@ -34,6 +35,7 @@ def test_package_validator_writes_complete_status_with_optional_tex_missing(monk
     assert "| Metadata | `metadata.json` | required | present |" in content
     assert "| Paper PDF | `raw/paper.pdf` | recommended | present |" in content
     assert "| Image manifest | `images/manifest.md` | recommended | present |" in content
+    assert "| PDF text evidence map | `notes/evidence-map.md` | recommended | present |" in content
     assert "| TeX source archive | `raw/source.tar.gz` | optional | missing |" in content
     assert "No missing required artifacts." in content
     assert "No warnings." in content
@@ -76,6 +78,7 @@ def test_package_validator_warns_when_pdf_and_image_manifest_are_missing(monkeyp
     assert "| Image manifest | `images/manifest.md` | recommended | missing |" in content
     assert "- Missing recommended artifact: `raw/paper.pdf`." in content
     assert "- Missing recommended artifact: `images/manifest.md`." in content
+    assert "- Missing recommended artifact: `notes/evidence-map.md`." in content
     assert "| TeX source archive | `raw/source.tar.gz` | optional | missing |" in content
     assert "No missing required artifacts." in content
 

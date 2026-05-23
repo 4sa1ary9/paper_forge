@@ -2,7 +2,8 @@
 Run a real arXiv paper through the full pipeline:
   intake -> asset collection -> source enrichment -> PDF image extraction
   -> code linking -> note scaffold -> terminology scaffold -> doubts scaffold
-  -> interview mapping scaffold -> package validation
+  -> interview mapping scaffold -> PDF text evidence -> package validation
+  -> deep note planning
 
 Usage: uv run python scripts/run_pipeline.py [arxiv_id_or_url] [external_source_url ...]
 Default: 2006.11239 (DDPM paper)
@@ -24,6 +25,8 @@ from paperforge.terminology_agent import run_terminology_scaffold
 from paperforge.doubts_agent import run_doubts_scaffold
 from paperforge.interview_mapper import run_interview_mapping_scaffold
 from paperforge.package_validator import run_package_validation
+from paperforge.pdf_text_extractor import run_pdf_text_extraction
+from paperforge.deep_note_planner import run_deep_note_planning
 
 DEFAULT_INPUT = "https://arxiv.org/abs/2006.11239"
 INPUT_TEXT = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_INPUT
@@ -135,10 +138,26 @@ print(f"\n  Status: {job.status}")
 for s in job.steps:
     print(f"    [{s.state:16s}] {s.name}  {s.error or ''}")
 
-# ── Stage 10: Research Package Validation ───────────────────────────
-print(f"{STAGE_SEP}\n  STAGE 10 — RESEARCH PACKAGE VALIDATION\n{STAGE_SEP}")
+# ── Stage 10: PDF Text Evidence ──────────────────────────────────────
+print(f"{STAGE_SEP}\n  STAGE 10 — PDF TEXT EVIDENCE\n{STAGE_SEP}")
+
+job = run_pdf_text_extraction(job)
+print(f"\n  Status: {job.status}")
+for s in job.steps:
+    print(f"    [{s.state:16s}] {s.name}  {s.error or ''}")
+
+# ── Stage 11: Research Package Validation ───────────────────────────
+print(f"{STAGE_SEP}\n  STAGE 11 — RESEARCH PACKAGE VALIDATION\n{STAGE_SEP}")
 
 job = run_package_validation(job)
+print(f"\n  Status: {job.status}")
+for s in job.steps:
+    print(f"    [{s.state:16s}] {s.name}  {s.error or ''}")
+
+# ── Stage 12: Deep Note Planning ─────────────────────────────────────
+print(f"{STAGE_SEP}\n  STAGE 12 — DEEP NOTE PLANNING\n{STAGE_SEP}")
+
+job = run_deep_note_planning(job)
 print(f"\n  Status: {job.status}")
 for s in job.steps:
     print(f"    [{s.state:16s}] {s.name}  {s.error or ''}")

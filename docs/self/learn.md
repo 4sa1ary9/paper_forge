@@ -14,7 +14,7 @@
 - 读完论文后，不知道能不能把它变成面试项目
 - 笔记质量没标准——到底"读懂"了没有，缺少可检验的证据链
 
-**它做了什么**：把"研究一篇论文"拆成 12 个当前已实现的 agent stage，每个 stage 有明确的输入、输出、状态，最终落盘成一个规范的目录结构。
+**它做了什么**：把"研究一篇论文"拆成 13 个当前已实现的 agent stage，每个 stage 有明确的输入、输出、状态，最终落盘成一个规范的目录结构。
 
 
 ## 2. 为什么它是 Agent 项目，不是普通脚本？
@@ -36,7 +36,7 @@
 
 ## 3. Agent 工作流阶段
 
-12 个当前已实现 stage，按依赖关系形成一条带分支的流水线：
+13 个当前已实现 stage，按依赖关系形成一条带分支的流水线：
 
 ```
 用户输入
@@ -52,9 +52,10 @@
   → ⑩ Package Validator（研究包完整性检查）
   → ⑪ PDF Text Evidence Extractor（PDF 文本证据）
   → ⑫ Deep Note Planner（深度笔记准备度计划）
+  → ⑬ Deep Note Writer MVP（保守版 TL;DR / Paper Overview 写入）
 ```
 
-步骤 ②-⑨ 之间耦合很弱——除了都需要 ① 的 metadata 作为前置，它们彼此之间基本独立。⑥⑦⑧⑨ 甚至可以并行执行。⑩、⑪ 和 ⑫ 更像验收、证据提取与规划阶段：它们读取前面落盘的产物，判断研究包是否齐全、提取 PDF 文本证据、规划后续哪些深度笔记章节可以进入生成。
+步骤 ②-⑨ 之间耦合很弱——除了都需要 ① 的 metadata 作为前置，它们彼此之间基本独立。⑥⑦⑧⑨ 甚至可以并行执行。⑩、⑪、⑫ 和 ⑬ 更像验收、证据提取、规划与保守写入阶段：它们读取前面落盘的产物，判断研究包是否齐全、提取 PDF 文本证据、规划后续哪些深度笔记章节可以进入生成，并把 ready 的轻量章节写回主笔记。
 
 
 ## 4. 为什么三层分离？
@@ -73,7 +74,7 @@ code-vault/          ← 第三方代码仓库（计划中，暂未实现）
 - **面试可讲**：这是典型的 "separation of concerns"，体现了工程意识
 
 
-## 5. 当前进度：Step 12 已跑通
+## 5. 当前进度：Step 13 已跑通
 
 **已完整实现**（有真实数据验证过）：
 - ① Paper Intake：arXiv API 调用 → metadata 解析 → workspace 创建 ✅
@@ -83,6 +84,7 @@ code-vault/          ← 第三方代码仓库（计划中，暂未实现）
 - ⑤ Code Linker：从 metadata 和 external sources 提取 GitHub URL ✅
 - ⑪ PDF Text Evidence Extractor：从 PDF 提取页码级文本证据 ✅
 - ⑫ Deep Note Planner：根据 package status 和 evidence 文件判断深度笔记章节准备度 ✅
+- ⑬ Deep Note Writer MVP：写入 TL;DR / Paper Overview 的保守证据草稿 ✅
 
 **骨架实现**（生成的是带占位符的模板文件，不是真实内容）：
 - ⑥ Note Writer：生成 `notes/README.md` 框架，所有章节标注 "Not generated yet"
@@ -92,16 +94,17 @@ code-vault/          ← 第三方代码仓库（计划中，暂未实现）
 - ⑩ Package Validator：文件存在性检查
 - ⑪ PDF Text Evidence Extractor：evidence map，不总结、不解释
 - ⑫ Deep Note Planner：readiness gate，不生成深度正文
+- ⑬ Deep Note Writer MVP：只写 ready 的 TL;DR / Paper Overview，不生成完整深度报告
 
 **暂不做**：
-- clone 仓库、深度 LLM 笔记生成、自动适配度判断、FastAPI 后端、React 前端
+- clone 仓库、完整深度 LLM 笔记生成、自动适配度判断、FastAPI 后端、React 前端
 
 **Scaffold vs 完整实现的关键区别**：scaffold 生成的是**结构正确的空模板**，内容字段写了但值是 "Not generated yet"——它验证了"文件能落盘、路径正确、artifact 追踪正常"，但没有真正调用 LLM 去理解和生成内容。这其实是一个聪明的设计：先把管道跑通，确认数据流没问题，再往里面灌 LLM 生成的内容。
 
 
 # 阶段二：Agent 模块深度拆解
 
-我把 12 个模块逐一过。先看共性，再看个性。
+我把当前模块逐一过。先看共性，再看个性。
 
 ## 共性设计模式
 
@@ -312,6 +315,20 @@ OPTIONAL    = [source.tar.gz, tex-source/]
 **当前状态**：骨架实现。能生成章节准备度计划，但不提取 PDF 正文、不生成深度解释。
 
 
+## 模块 13: Deep Note Writer MVP
+
+**输入**：`ResearchJob`（需要 `notes/deep-note-plan.md`、`notes/evidence-map.md` 和 `notes/README.md` 存在）
+**输出**：更新后的 `notes/README.md`
+
+**关键设计**：它只处理 readiness table 中标记为 `ready` 的目标章节。当前 MVP 只写 TL;DR 和 Paper Overview，并且每段都引用 `notes/evidence-map.md` 的页码，同时保留 `needs human review` 标记。
+
+**为什么仍然保守**：它不是完整深度笔记生成器。当前输出更像 evidence-grounded seed，目的是验证“按证据写入主笔记”的管道，而不是自动解释 Core Method 或实验结果。
+
+**真实修复**：真实 Attention 样例中，PDF 第 1 页是版权/授权声明。初版会把它写入 TL;DR，后来增加了 boilerplate page 过滤和回归测试，避免把 PDF 前置声明当成论文内容。另一个细节是 regex replacement string 会破坏 `\alpha` 这类反斜杠证据文本，后来改成函数式 replacement。
+
+**当前状态**：MVP 完成。能写入 TL;DR / Paper Overview，但还没有段落级证据选择、LLM 生成、Core Method 或 Experiments 深度解释。
+
+
 # 阶段三：代码级深读
 
 ## 1. `models.py`——数据模型
@@ -350,7 +367,7 @@ class AgentStep:
 - `asdict()` 一行序列化到 JSON（在 `to_dict` 函数中）
 - 时间字段用 `str | None` 而非 `datetime`——因为 JSON 不能直接存 datetime 对象，存 ISO 字符串更简单
 
-**`ArtifactKind` 的分类**：当前列出 12 种类型，覆盖了现有 Step 12 scaffold workflow 会产生的文件类型。不是随手写的——每个 kind 对应一个 agent 模块的产出物，例如 metadata、pdf、figure、note、code_reference、package_status、evidence_map。
+**`ArtifactKind` 的分类**：当前列出 12 种类型，覆盖了现有 scaffold workflow 会产生的文件类型。不是随手写的——每个 kind 对应一类 agent 产出物，例如 metadata、pdf、figure、note、code_reference、package_status、evidence_map。Step 13 更新的是主笔记，所以继续复用 `note` kind。
 
 **`PaperMetadata` 的 `status` 字段**：只有两个值 `intake_completed` / `intake_partial`。这是一个有意思的设计——它不在 `PaperMetadata` 上做更多状态区分，而是把更细粒度的状态放在 `ResearchJob.status` 和每个 `AgentStep.state` 上。
 
@@ -465,7 +482,7 @@ active_job_id = st.session_state.get("active_job_id", jobs[0].id)  # 读取时
 
 ### 电梯演讲版（30 秒）
 
-> "PaperForge 是一个论文研究 Agent——你把论文 URL 给它，它自动完成身份识别、PDF 下载、图片提取、代码关联、笔记生成、术语提取、面试项目映射、PDF 文本证据提取和深度笔记准备度计划，最终产出一个结构化的研究包。当前 Python 版已跑通完整 scaffold 闭环，25 个测试通过。"
+> "PaperForge 是一个论文研究 Agent——你把论文 URL 给它，它自动完成身份识别、PDF 下载、图片提取、代码关联、笔记生成、术语提取、面试项目映射、PDF 文本证据提取、深度笔记准备度计划，并写入带页码证据的保守版 TL;DR / Paper Overview。当前 Python 版已跑通完整 scaffold 闭环，29 个测试通过。"
 
 ### 深度介绍版（2 分钟）
 
@@ -491,7 +508,7 @@ active_job_id = st.session_state.get("active_job_id", jobs[0].id)  # 读取时
 
 ### 2. "你的 Agent 是怎么做 planning 的？"
 
-**诚实回答**：当前是静态的、预定义的步骤序列，不是 LLM 动态生成的 plan。PROJECT_GUIDE.md 和 WORKFLOW_SPEC.md 定义好了当前 scaffold workflow 的步骤排列。Step 12 之后的 Deep Note Planner 是规则驱动的 readiness plan，用来判断章节准备度；后续 LLM 动态 planning 还没实现。
+**诚实回答**：当前是静态的、预定义的步骤序列，不是 LLM 动态生成的 plan。PROJECT_GUIDE.md 和 WORKFLOW_SPEC.md 定义好了当前 scaffold workflow 的步骤排列。Deep Note Planner 是规则驱动的 readiness plan，用来判断章节准备度；Deep Note Writer MVP 只按 ready 状态写入保守草稿。后续 LLM 动态 planning 还没实现。
 
 **但要补一句**：这个设计是有意的——在引入 LLM 做动态 planning 之前，先把确定性的流程跑通。后续如果要加 LLM planning，会在 intake 阶段让 LLM 判断"这篇论文理论上需要哪些步骤"，与预定义模板合并。
 
@@ -567,21 +584,22 @@ active_job_id = st.session_state.get("active_job_id", jobs[0].id)  # 读取时
 
 # 阶段五：实战延伸——如何继续迭代
 
-## 1. 下一步 Deep Note Writer MVP 设计
+## 1. 下一步 Deep Note Writer Background MVP 设计
 
-当前可以开始做保守版 Deep Note Writer，但不能一次性生成完整深度报告。更稳的下一步是：
+当前 Deep Note Writer MVP 已经能写入 TL;DR 和 Paper Overview，但不能一次性扩成完整深度报告。更稳的下一步是：
 
 ```
-Step 13: Deep Note Writer MVP
+Step 14: Deep Note Writer Background MVP
   Input:  notes/README.md + notes/deep-note-plan.md + notes/evidence-map.md
-  Process: 只填充 deep-note-plan 标记为 ready 的章节
+  Process: 只填充 deep-note-plan 标记为 ready 的 Background and Motivation
   Output: notes/README.md
   Guard:  每段结论保留页码证据和人工复查标记
 ```
 
 为什么先做 MVP：
 - 现在已经有 `notes/evidence-map.md`，可以让生成内容引用页码；
-- 先从 TL;DR、Paper Overview 这类 ready 章节开始，风险更小；
+- 已经从 TL;DR、Paper Overview 这类轻量章节开始验证了写入链路；
+- Background and Motivation 仍然相对保守，适合继续扩展；
 - Deep Q&A、Practical Takeaways 仍然依赖前置方法和实验笔记，不能提前生成。
 
 ## 2. 后续 Deep Note Generation 设计
@@ -592,7 +610,7 @@ Step 13: Deep Note Writer MVP
 
 **设计建议**：
 ```
-Step 13: Deep Note Writer
+Step 14+: Deep Note Writer
   Input:  notes/README.md + notes/deep-note-plan.md + notes/evidence-map.md
   Process: LLM 只填充 deep-note-plan 标记为 ready 的章节
   Output: notes/README.md (updated, with content)

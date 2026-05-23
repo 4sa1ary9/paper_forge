@@ -1525,3 +1525,129 @@ notes/deep-note-plan.md + notes/evidence-map.md + notes/README.md
   -> 只填充 ready 章节
   -> 保留页码证据和人工复查标记
 ```
+
+## Step 13: Deep Note Writer MVP
+
+### 目标
+
+在 readiness gate 和 PDF text evidence map 之后，先做一个保守版深度笔记写入器：
+
+```text
+notes/deep-note-plan.md + notes/evidence-map.md + notes/README.md
+  -> 只处理 ready 的 TL;DR 和 Paper Overview
+  -> 更新 notes/README.md
+  -> 保留页码证据和人工复查标记
+```
+
+本阶段仍然不生成完整深度报告，不解释 Core Method、Experiments、Deep Q&A 或 Practical Takeaways。
+
+### 为什么这样做
+
+Step 12 已经把 PDF 正文提取为页码级 evidence map，但如果直接让系统写完整深度笔记，仍然容易产生无证据支撑的总结。
+
+所以 Step 13 只做最小可验证写入：
+
+- 读取 `notes/deep-note-plan.md`，确认章节是否 ready；
+- 读取 `notes/evidence-map.md`，提取可引用的页码文本；
+- 只替换主笔记中的 TL;DR 和 Paper Overview；
+- 更新主笔记 Draft status，避免仍显示 scaffold only；
+- 每段草稿都保留页码来源；
+- 明确写入 `needs human review`；
+- 跳过明显版权/授权声明页，避免把 PDF boilerplate 当作论文内容。
+
+### 已完成文件
+
+新增核心模块：
+
+- `paperforge/deep_note_writer.py`
+
+修改工作台：
+
+- `app.py`
+
+修改流水线脚本：
+
+- `scripts/run_pipeline.py`
+
+新增测试：
+
+- `tests/test_deep_note_writer.py`
+
+更新文档：
+
+- `README.md`
+- `docs/PROJECT_GUIDE.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/PROGRESS.md`
+- `docs/BUILD_STEPS.md`
+- `docs/STATUS_REVIEW.md`
+- `docs/DOCUMENTATION_GUIDE.md`
+
+### 当前能力
+
+已支持：
+
+- 读取 `notes/deep-note-plan.md` 的 section readiness table；
+- 读取 `notes/evidence-map.md` 的 page evidence excerpt；
+- 只处理标记为 `ready` 的目标章节；
+- 当前只写入 TL;DR 和 Paper Overview；
+- 更新 `notes/README.md`；
+- 将 Draft status 更新为 conservative deep note MVP；
+- 写入 `note.write_deep_note_mvp` timeline step；
+- 将更新后的 `notes/README.md` 写入 artifacts；
+- 缺少输入时标记为 `partial`；
+- 目标章节都 blocked 时不改 README，并标记为 `partial`；
+- 跳过明显版权/授权声明页。
+
+### 验证方式
+
+运行测试：
+
+```powershell
+uv run python -m pytest
+```
+
+运行真实流水线：
+
+```powershell
+uv run python scripts/run_pipeline.py https://arxiv.org/abs/1706.03762 https://github.com/harvardnlp/annotated-transformer
+```
+
+当前验证结果：
+
+```text
+pytest: 29 passed
+compileall: app.py paperforge tests scripts passed
+真实样例: https://arxiv.org/abs/1706.03762 -> note.write_deep_note_mvp completed
+输出: paper-vault/attention-is-all-you-need/notes/README.md
+```
+
+验证时修复过两个问题：
+
+- 初版会把 PDF 第 1 页版权/授权声明写入 TL;DR，已增加 boilerplate page 过滤和回归测试。
+- 章节替换使用 regex replacement string 时会破坏 `\alpha` 这类反斜杠文本，已改为函数式 replacement 并增加回归测试。
+
+### 这一阶段没有做什么
+
+这些能力继续留到后续步骤：
+
+- 完整深度论文解释；
+- Core Method 自动解释；
+- Experiments 自动解读；
+- 自动抽取和解释术语；
+- 自动生成疑难点；
+- 自动判断面试项目适配度；
+- clone 或分析第三方代码仓库；
+- RAG / 向量检索。
+
+### 下一步建议
+
+下一步建议继续做 **Deep Note Writer Background MVP**：
+
+```text
+notes/deep-note-plan.md + notes/evidence-map.md + notes/README.md
+  -> 只处理 ready 的 Background and Motivation
+  -> 保留 page evidence 和人工复查标记
+```
+
+Core Method 和 Experiments 需要更细的证据选择规则，建议不要和 Background 一次性混在一起做。

@@ -3,7 +3,7 @@ Run a real arXiv paper through the full pipeline:
   intake -> asset collection -> source enrichment -> PDF image extraction
   -> code linking -> note scaffold -> terminology scaffold -> doubts scaffold
   -> interview mapping scaffold -> PDF text evidence -> package validation
-  -> deep note planning
+  -> deep note planning -> deep note writing
 
 Usage: uv run python scripts/run_pipeline.py [arxiv_id_or_url] [external_source_url ...]
 Default: 2006.11239 (DDPM paper)
@@ -27,6 +27,7 @@ from paperforge.interview_mapper import run_interview_mapping_scaffold
 from paperforge.package_validator import run_package_validation
 from paperforge.pdf_text_extractor import run_pdf_text_extraction
 from paperforge.deep_note_planner import run_deep_note_planning
+from paperforge.deep_note_writer import run_deep_note_writing
 
 DEFAULT_INPUT = "https://arxiv.org/abs/2006.11239"
 INPUT_TEXT = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_INPUT
@@ -158,6 +159,14 @@ for s in job.steps:
 print(f"{STAGE_SEP}\n  STAGE 12 — DEEP NOTE PLANNING\n{STAGE_SEP}")
 
 job = run_deep_note_planning(job)
+print(f"\n  Status: {job.status}")
+for s in job.steps:
+    print(f"    [{s.state:16s}] {s.name}  {s.error or ''}")
+
+# ── Stage 13: Deep Note Writing ──────────────────────────────────────
+print(f"{STAGE_SEP}\n  STAGE 13 — DEEP NOTE WRITING MVP\n{STAGE_SEP}")
+
+job = run_deep_note_writing(job)
 print(f"\n  Status: {job.status}")
 for s in job.steps:
     print(f"    [{s.state:16s}] {s.name}  {s.error or ''}")

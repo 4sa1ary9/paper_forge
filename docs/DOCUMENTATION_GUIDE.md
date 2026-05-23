@@ -13,7 +13,7 @@ PaperForge Agent 不是一个只有代码的项目。它是一个 agent workflow
 
 这份文档用于规定项目后续应该准备哪些 Markdown 文档。
 
-当前文档状态应以 `docs/PROGRESS.md` 和 `docs/STATUS_REVIEW.md` 为准。截至 Step 12，项目已经完成 scaffold MVP + PDF text evidence map + deep note readiness gate；深度笔记正文生成、段落级 evidence map、RAG 和代码仓库分析仍属于后续规划。
+当前文档状态应以 `docs/PROGRESS.md` 和 `docs/STATUS_REVIEW.md` 为准。截至 Step 13，项目已经完成 scaffold MVP + PDF text evidence map + deep note readiness gate + conservative deep note writing MVP；完整深度笔记正文生成、段落级 evidence map、RAG 和代码仓库分析仍属于后续规划。
 
 ## 2. 当前必须文档
 

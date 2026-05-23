@@ -13,7 +13,7 @@ PaperForge Agent 把一个论文输入转换成一个完整研究包。
   -> 图表和文本提取
   -> PDF 文本证据提取
   -> 深度笔记准备度计划
-  -> 深度笔记生成
+  -> 保守版深度笔记写入
   -> 术语和疑难点提取
   -> 面试项目映射
   -> 研究包验证
@@ -24,7 +24,7 @@ PaperForge Agent 把一个论文输入转换成一个完整研究包。
 
 ## 1.1 当前实现边界
 
-截至 Step 12，当前 Python 版已经跑通的是 **scaffold research package + PDF text evidence map + deep note readiness gate**，不是最终深度研究包。
+截至 Step 13，当前 Python 版已经跑通的是 **scaffold research package + PDF text evidence map + deep note readiness gate + conservative deep note writing MVP**，不是最终深度研究包。
 
 已经实现：
 
@@ -36,12 +36,13 @@ PaperForge Agent 把一个论文输入转换成一个完整研究包。
 - GitHub 候选 URL 整理；
 - 笔记、术语、疑难点和面试项目映射模板；
 - 研究包文件存在性验证；
-- 深度笔记准备度计划。
+- 深度笔记准备度计划；
+- 保守版深度笔记 MVP，只写入 ready 的 TL;DR 和 Paper Overview，并保留页码证据和人工复查标记。
 
 尚未实现：
 
 - 段落级 evidence map 和语义检索；
-- 深度论文解释；
+- 完整深度论文解释；
 - 自动术语抽取和解释；
 - 自动疑难点生成；
 - 代码仓库 clone 和代码文件分析；
@@ -382,6 +383,18 @@ notes/README.md
 - 明确标注 readiness gate only，不生成深度解释；
 - 缺少 required 或 recommended 输入时将 `note.plan_deep_note` 标记为 `partial`。
 
+当前 Python MVP 已做 Deep Note Writer MVP：
+
+- 读取 `notes/deep-note-plan.md`、`notes/evidence-map.md` 和 `notes/README.md`；
+- 只处理 readiness table 中标记为 `ready` 的目标章节；
+- 当前只写入 TL;DR 和 Paper Overview；
+- 每段草稿保留 `notes/evidence-map.md` 页码证据；
+- 将主笔记 Draft status 更新为 conservative deep note MVP；
+- 明确标注 `needs human review`，不把 evidence excerpt 伪装成最终深度解释；
+- 跳过明显版权/授权声明页，避免把 PDF boilerplate 当作论文内容；
+- 将 `note.write_deep_note_mvp` 写入 timeline；
+- 将更新后的 `notes/README.md` 写入 artifacts。
+
 ### 质量规则
 
 - 先讲直觉，再讲公式。
@@ -636,4 +649,4 @@ Streamlit 工作台应该把 timeline 渲染成可视化 plan 或任务时间线
 - `notes/evidence-map.md` 存在，并提供页码级文本证据入口。
 - `notes/deep-note-plan.md` 存在，并清楚列出各主笔记章节的生成准备度。
 
-当前 Step 12 满足文件存在性、页码级文本证据和深度笔记准备度计划部分；深度方法解释、可复用术语、未解决问题和具体项目判断仍未满足。
+当前 Step 13 满足文件存在性、页码级文本证据、深度笔记准备度计划，以及 TL;DR / Paper Overview 的保守证据草稿部分；深度方法解释、可复用术语、未解决问题和具体项目判断仍未满足。

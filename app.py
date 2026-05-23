@@ -8,6 +8,7 @@ import streamlit as st
 from paperforge.asset_collector import run_asset_collection
 from paperforge.code_linker import run_code_linking
 from paperforge.deep_note_planner import run_deep_note_planning
+from paperforge.deep_note_writer import run_deep_note_writing
 from paperforge.doubts_agent import run_doubts_scaffold
 from paperforge.interview_mapper import run_interview_mapping_scaffold
 from paperforge.intake_agent import run_paper_intake
@@ -53,7 +54,8 @@ def main() -> None:
             13. 提取 PDF 文本证据
             14. 验证研究包状态
             15. 规划深度笔记生成准备度
-            16. 展示 timeline 和 artifacts
+            16. 写入保守版深度笔记草稿
+            17. 展示 timeline 和 artifacts
             """
         )
 
@@ -154,6 +156,11 @@ def main() -> None:
         with st.spinner("Deep Note Planner 正在判断深度笔记准备度..."):
             active_job = run_deep_note_planning(active_job)
         st.success(f"Deep note planning finished: {active_job.status}")
+
+    if active_job.metadata and st.button("Write Deep Note MVP"):
+        with st.spinner("Deep Note Writer 正在写入带证据标记的保守草稿..."):
+            active_job = run_deep_note_writing(active_job)
+        st.success(f"Deep note writing finished: {active_job.status}")
 
     render_job(active_job, data_dir)
 

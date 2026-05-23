@@ -15,9 +15,10 @@
 9. 生成术语库骨架。
 10. 生成疑难点骨架。
 11. 生成面试项目映射骨架，保留项目判断入口但不自动下结论。
-12. 生成研究包状态检查报告，区分 required、recommended 和 optional 产物。
-13. 从 PDF 提取分页文本证据，生成 `notes/evidence-map.md`。
+12. 从 PDF 提取分页文本证据，生成 `notes/evidence-map.md`。
+13. 生成研究包状态检查报告，区分 required、recommended 和 optional 产物。
 14. 生成深度笔记准备计划，标记哪些章节有证据支撑、哪些暂不能自动生成。
+15. 写入保守版深度笔记 MVP，只填充 ready 的 TL;DR 和 Paper Overview，并保留页码证据和人工复查标记。
 
 ## 为什么做这个项目
 
@@ -47,7 +48,7 @@ PaperForge Agent 要解决的是这个完整工作流，而不是单点问答。
 
 ## 当前可运行能力
 
-当前版本已经具备 intake + asset collection + source enrichment + PDF image extraction + code linking + note scaffold + terminology scaffold + doubts scaffold + interview mapping scaffold + package validation + PDF text evidence extraction + deep note planning 的最小闭环：
+当前版本已经具备 intake + asset collection + source enrichment + PDF image extraction + code linking + note scaffold + terminology scaffold + doubts scaffold + interview mapping scaffold + package validation + PDF text evidence extraction + deep note planning + conservative deep note writing MVP 的最小闭环：
 
 1. 输入论文标题、arXiv ID 或 URL。
 2. Agent 调用 arXiv API 解析论文元信息。
@@ -63,10 +64,11 @@ PaperForge Agent 要解决的是这个完整工作流，而不是单点问答。
 12. Terminology Agent 生成 `notes/terminology.md` 的术语库骨架。
 13. Doubts Agent 生成 `notes/doubts.md` 的疑难点骨架。
 14. Interview Mapper Agent 生成 `notes/interview-project.md` 的面试项目映射骨架。
-15. Research Package Validator Agent 生成 `notes/package-status.md`，检查研究包文件状态。
-16. PDF Text Evidence Extractor Agent 生成 `notes/evidence-map.md`，保留页码级文本证据入口。
+15. PDF Text Evidence Extractor Agent 生成 `notes/evidence-map.md`，保留页码级文本证据入口。
+16. Research Package Validator Agent 生成 `notes/package-status.md`，检查研究包文件状态。
 17. Deep Note Planner Agent 生成 `notes/deep-note-plan.md`，判断深度笔记章节准备度。
-18. Streamlit 页面展示论文摘要、任务状态、agent timeline 和 artifact 列表。
+18. Deep Note Writer Agent 更新 `notes/README.md` 中 ready 的 TL;DR 和 Paper Overview，写入带页码证据的保守草稿。
+19. Streamlit 页面展示论文摘要、任务状态、agent timeline 和 artifact 列表。
 
 ## 项目结构
 
@@ -78,6 +80,7 @@ PaperForge-Agent/
 │   ├── asset_collector.py           # PDF / TeX Source 下载和解压
 │   ├── code_linker.py               # GitHub 候选仓库整理
 │   ├── deep_note_planner.py          # 深度笔记准备度计划
+│   ├── deep_note_writer.py           # 保守版深度笔记 MVP
 │   ├── doubts_agent.py              # 疑难点骨架生成
 │   ├── interview_mapper.py           # 面试项目映射骨架生成
 │   ├── intake_agent.py             # 论文 intake agent workflow

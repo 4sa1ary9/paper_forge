@@ -2,16 +2,16 @@
 
 ## 当前阶段
 
-**阶段：Step 12，PDF Text Evidence Extractor 已完成。**
+**阶段：Step 13，Deep Note Writer MVP 已完成。**
 
 当前项目已经从 TypeScript/React/Express 调整为 **Python + Streamlit**。
 
 ## 完成度结论
 
-当前项目已经完成 **Step 12 scaffold MVP**，但还没有完成文档中描述的最终研究包目标。
+当前项目已经完成 **Step 13 scaffold MVP + conservative deep note writing MVP**，但还没有完成文档中描述的最终研究包目标。
 
-- 已完成：单篇论文从 intake 到 PDF text evidence extraction + deep note planning 的确定性 workflow，包含 metadata、PDF/TeX 资产、外部来源记录、图片 manifest、代码候选、笔记/术语/疑难点/面试项目模板、研究包状态报告、PDF 文本证据图和深度笔记准备计划。
-- 未完成：深度论文笔记生成、术语自动解释、疑难点自动生成、代码到论文方法的真实映射、面试项目适配度判断、RAG、自动 clone、多篇论文批处理。
+- 已完成：单篇论文从 intake 到 PDF text evidence extraction + deep note planning + conservative deep note writing 的确定性 workflow，包含 metadata、PDF/TeX 资产、外部来源记录、图片 manifest、代码候选、笔记/术语/疑难点/面试项目模板、研究包状态报告、PDF 文本证据图、深度笔记准备计划，以及带页码证据的 TL;DR / Paper Overview 保守草稿。
+- 未完成：完整深度论文笔记生成、术语自动解释、疑难点自动生成、代码到论文方法的真实映射、面试项目适配度判断、RAG、自动 clone、多篇论文批处理。
 - 详细核对见：`docs/STATUS_REVIEW.md`。
 
 ## 当前技术栈
@@ -157,6 +157,16 @@ uv run python -m pytest
   - 缺少 required 或 recommended 输入时将 step 标记为 `partial`；
   - 将 `note.plan_deep_note` 写入 timeline 和 artifacts。
 - Streamlit 工作台已增加 `Plan Deep Note Readiness` 按钮。
+- 已实现 Deep Note Writer MVP：
+  - 读取 `notes/deep-note-plan.md`、`notes/evidence-map.md` 和 `notes/README.md`；
+  - 只处理 readiness table 中标记为 ready 的目标章节；
+  - 当前只写入 TL;DR 和 Paper Overview，不一次性生成完整深度报告；
+  - 写入 evidence-grounded draft，引用 `notes/evidence-map.md` 页码；
+  - 将主笔记 Draft status 更新为 conservative deep note MVP；
+  - 明确保留 needs human review 标记；
+  - 跳过明显版权/授权声明页，避免把 PDF boilerplate 当作论文内容；
+  - 将 `note.write_deep_note_mvp` 写入 timeline 和 artifacts。
+- Streamlit 工作台已增加 `Write Deep Note MVP` 按钮。
 
 ## 当前验证状态
 
@@ -166,7 +176,7 @@ Python 版本已验证通过：
 - 已创建 `.venv` 虚拟环境；
 - 激活提示名为 `agent`；
 - 已生成 `uv.lock`；
-- 执行 `uv run python -m pytest` 通过：25 passed；
+- 执行 `uv run python -m pytest` 通过：29 passed；
 - 真实 intake + asset collection + source enrichment 通过：
   - 输入：`https://arxiv.org/abs/1706.03762`
   - 输出：`attention-is-all-you-need`
@@ -215,42 +225,49 @@ Python 版本已验证通过：
   - 命令：`uv run python scripts/run_pipeline.py https://arxiv.org/abs/1706.03762 https://github.com/harvardnlp/annotated-transformer`
   - 输出：`paper-vault/attention-is-all-you-need/notes/deep-note-plan.md`
   - 状态：`completed`
+- 真实 deep note writing MVP pipeline 通过：
+  - 命令：`uv run python scripts/run_pipeline.py https://arxiv.org/abs/1706.03762 https://github.com/harvardnlp/annotated-transformer`
+  - 输出：`paper-vault/attention-is-all-you-need/notes/README.md`
+  - 状态：`completed`
+  - 行为：ready 的 TL;DR 和 Paper Overview 写入 evidence-grounded draft，并引用 `notes/evidence-map.md` 页码。
 - Streamlit 已启动：
   - URL：`http://localhost:8501`
   - HTTP 状态：200
 
-验证时修复过两个问题：
+验证时修复过四个问题：
 
 - arXiv API 返回 HTTP 429：已给请求添加 User-Agent。
 - 旧 TypeScript 版本留下的 job 文件是 camelCase：Python 版读取逻辑已兼容。
+- Deep Note Writer 初版会使用 PDF 版权/授权页作为 TL;DR 证据：已增加 boilerplate page 过滤和回归测试。
+- Deep Note Writer 章节替换会把反斜杠证据文本当成 regex replacement 转义：已改为函数式 replacement 并增加回归测试。
 
 ## 下一步
 
-Step 12 已跑通。下一步可以开始做一个保守版 **Deep Note Writer**，但仍然只允许引用 `notes/evidence-map.md` 中已有页码证据：
+Step 13 已跑通。下一步可以继续做 **Deep Note Writer 的保守章节扩展**，仍然只允许引用 `notes/evidence-map.md` 中已有页码证据：
 
 ```text
 notes/deep-note-plan.md + notes/evidence-map.md + notes/README.md
-  -> 只填充 ready 章节
-  -> 每段结论保留页码证据
+  -> 从 TL;DR / Paper Overview 扩展到 Background and Motivation
+  -> 每段内容保留页码证据
   -> 不确定内容显式标注
 ```
 
-这一步可以从 TL;DR 和 Paper Overview 开始，不要一次性生成完整深度报告。
+这一步仍然不要一次性生成完整深度报告。Core Method、Experiments 和 Code Mapping 需要更细的证据选择规则，建议单独设计后再实现。
 
 推荐下一阶段：
 
 ```text
-Step 13: Deep Note Writer MVP
+Step 14: Deep Note Writer Background MVP
   -> 读取 deep-note-plan.md 和 evidence-map.md
-  -> 只处理 ready 章节
+  -> 只处理 ready 的 Background and Motivation
   -> 更新 notes/README.md
-  -> 保留 evidence note 和人工复查标记
+  -> 保留 page evidence 和人工复查标记
 ```
 
 ## 暂不做
 
 - clone 仓库；
-- 深度论文笔记生成；
+- 完整深度论文笔记生成；
 - 自动判断面试项目适配度；
 - 自动生成完整项目方案；
 - FastAPI 后端；

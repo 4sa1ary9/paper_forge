@@ -13,7 +13,7 @@
 3. 能向面试官清晰解释"为什么这是一个 Agent 项目而非普通脚本"
 4. 掌握核心代码实现细节，能回答追问
 5. 学会如何包装项目经历，应对常见面试问题
-6. 明确当前项目边界：Step 12 scaffold MVP + PDF text evidence map + deep note readiness gate 已完成，但最终深度研究包尚未完成。先参考 `docs/STATUS_REVIEW.md`。
+6. 明确当前项目边界：Step 13 scaffold MVP + PDF text evidence map + deep note readiness gate + conservative deep note writing MVP 已完成，但最终深度研究包尚未完成。先参考 `docs/STATUS_REVIEW.md`。
 
 ---
 
@@ -23,7 +23,7 @@
 2. 为什么说它是一个 Agent 项目，而不是普通的论文总结工具？请从架构层面解释。
 3. 项目的 Agent 工作流分了哪些阶段？每个阶段的核心职责是什么？
 4. 项目的目录结构为什么要这样设计（应用代码/研究资产/代码仓库三者分离）？
-5. 当前项目做到了什么程度（Step 12），哪些已经跑通，哪些是骨架（scaffold），哪些暂不做？
+5. 当前项目做到了什么程度（Step 13），哪些已经跑通，哪些是骨架（scaffold），哪些暂不做？
 6. 按 `docs/STATUS_REVIEW.md`，哪些能力已经完成，哪些还属于长期规划？
 
 ---
@@ -45,6 +45,7 @@
 - Interview Mapper Agent (`interview_mapper.py`)
 - Research Package Validator Agent (`package_validator.py`)
 - Deep Note Planner Agent (`deep_note_planner.py`)
+- Deep Note Writer Agent (`deep_note_writer.py`)
 
 ### 每个模块请回答
 
@@ -92,6 +93,12 @@
    - `notes/evidence-map.md` 的页码、字符数和 excerpt 有什么作用？
    - PDF 缺失或无可抽取文本时为什么用 partial report？
 
+8. **`deep_note_writer.py`** — 保守版深度笔记写入
+   - 为什么当前只写 TL;DR 和 Paper Overview？
+   - 它如何读取 `deep-note-plan.md` 的 ready 状态？
+   - 它如何引用 `evidence-map.md` 页码，并保留人工复查标记？
+   - 为什么要跳过明显版权/授权声明页？
+
 ---
 
 ## 阶段四：面试视角——如何包装这个项目
@@ -130,7 +137,7 @@
 
 请给我建议：
 
-1. 下一步 Deep Note Writer MVP 该如何设计？它如何只填充 ready 章节并引用 `notes/evidence-map.md`？
+1. 下一步 Deep Note Writer Background MVP 该如何设计？它如何只填充 ready 的 Background and Motivation 并引用 `notes/evidence-map.md`？
 2. Deep Note Generation 什么时候该引入 LLM，什么时候不该？
 3. 如果要把核心逻辑从 Streamlit 迁移到 FastAPI，哪些模块可以零改动复用？
 4. 如何加入 RAG？论文资产（PDF、笔记、术语库）如何变成可检索的知识库？

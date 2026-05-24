@@ -24,7 +24,7 @@ PaperForge Agent 把一个论文输入转换成一个完整研究包。
 
 ## 1.1 当前实现边界
 
-截至 Step 13，当前 Python 版已经跑通的是 **scaffold research package + PDF text evidence map + deep note readiness gate + conservative deep note writing MVP**，不是最终深度研究包。
+截至 Step 23，当前 Python 版已经跑通的是 **scaffold research package + PDF text evidence map + deep note readiness gate + conservative deep note writing MVP + terminology evidence MVP + doubts evidence MVP + code mapping evidence MVP + interview project assessment MVP**，不是最终深度研究包。
 
 已经实现：
 
@@ -37,21 +37,29 @@ PaperForge Agent 把一个论文输入转换成一个完整研究包。
 - 笔记、术语、疑难点和面试项目映射模板；
 - 研究包文件存在性验证；
 - 深度笔记准备度计划；
-- 保守版深度笔记 MVP，只写入 ready 的 TL;DR 和 Paper Overview，并保留页码证据和人工复查标记。
+- 保守版深度笔记 MVP，只写入 ready 的 TL;DR、Paper Overview、Background and Motivation、Core Method、Experiments、Limitations、Deep Q&A、Practical Takeaways，并保留页码/图片证据和人工复查标记。
+- 术语证据 MVP，只从 README 页码证据行中抽取有 evidence-map 页码支撑的候选术语，保留 first seen page、来源章节和人工复查标记。
+- 疑难点证据 MVP，只从 README 证据草稿、Deep Q&A 已有问题和 terminology first-seen 条目派生疑难点候选，保留来源章节、page evidence 和人工复查标记。
+- 代码映射证据 MVP，在用户提供本地代码目录后，按 Core Method 方法词重合度生成文件级候选映射，不自动 clone。
+- 面试项目适配度评估 MVP，基于主笔记、代码映射和疑难点信号输出 high / medium / low / not recommended、最小 demo 范围和风险边界。
 
 尚未实现：
 
+- LLM Query Planner：在 arXiv 查询前把简称或模糊标题规划成 canonical paper title；
+- ai-paper-reader Prompt Pack：基于 job artifacts 生成可复制给 Codex 的阅读笔记提示词；
 - 段落级 evidence map 和语义检索；
 - 完整深度论文解释；
 - 自动术语抽取和解释；
-- 自动疑难点生成；
-- 代码仓库 clone 和代码文件分析；
-- 方法到代码的真实映射；
-- 面试项目适配度判断；
+- 完整疑难点分析；
+- 代码仓库自动 clone 和远端代码读取；
+- 方法到代码的行级或语义级真实映射；
+- 完整项目方案生成；
 - RAG / 向量检索；
 - 多篇论文批处理。
 
 因此后续实现时，应把当前版本视为 **可运行的 scaffold MVP**，不要把 scaffold 文件当成已完成的深度内容。
+
+核心 MVP 之后的扩展路线不在本规范中展开，详见 `docs/EXTENSION_ROADMAP.md`。
 
 ## 2. 论文输入流程
 
@@ -222,6 +230,17 @@ notes/external-sources.md
 - clone 决策统一记录为 `not cloned`；
 - 后续是否 clone 需要用户确认。
 
+当前 Python MVP 已做 Code Mapping Evidence MVP：
+
+- 读取 `notes/code-references.md` 和 `notes/README.md`；
+- 只在用户提供本地代码仓库路径时扫描代码文件；
+- 不自动 clone，不读取远端仓库；
+- 从 `notes/README.md` 的 Core Method 章节提取方法证据词；
+- 在本地代码目录中按文件路径和内容的方法词重合度生成候选代码路径；
+- 更新 `notes/code-references.md` 的 `Code Mapping Evidence` 章节；
+- 缺少本地代码路径时将 step 标记为 `needs_user_input`；
+- 输出保持文件级候选，不声明行级实现映射。
+
 ### 目标目录
 
 ```text
@@ -387,11 +406,18 @@ notes/README.md
 
 - 读取 `notes/deep-note-plan.md`、`notes/evidence-map.md` 和 `notes/README.md`；
 - 只处理 readiness table 中标记为 `ready` 的目标章节；
-- 当前只写入 TL;DR 和 Paper Overview；
+- 当前只写入 TL;DR、Paper Overview、Background and Motivation、Core Method、Experiments、Limitations、Deep Q&A、Practical Takeaways；
 - 每段草稿保留 `notes/evidence-map.md` 页码证据；
+- Core Method 和 Experiments 额外读取 `images/manifest.md`，输出 figure/table evidence 入口；
 - 将主笔记 Draft status 更新为 conservative deep note MVP；
 - 明确标注 `needs human review`，不把 evidence excerpt 伪装成最终深度解释；
 - 跳过明显版权/授权声明页，避免把 PDF boilerplate 当作论文内容；
+- Background and Motivation 优先选择 introduction、motivation、background 证据页，并避开明显图注页；
+- Core Method 优先选择 method、model、architecture、attention 等方法证据页；如果 Core Method ready 但图片 manifest 缺失，则返回 `partial` 且不改写 `notes/README.md`；
+- Experiments 优先选择 experiment、evaluation、benchmark、result、ablation、table 等实验证据页，并单独列出 table/result evidence 和 training detail evidence；
+- Limitations 优先选择 limitation、future work、failure、constraint、risk 等限制/风险证据页，不需要图片 manifest；
+- Deep Q&A 从已写入的 Core Method、Experiments、Limitations 证据草稿派生问题，保留来源章节和页码；
+- Practical Takeaways 从已写入的 Core Method、Experiments、Limitations、Deep Q&A 证据草稿派生学习型 takeaway，保留来源章节和页码，不生成项目建议；
 - 将 `note.write_deep_note_mvp` 写入 timeline；
 - 将更新后的 `notes/README.md` 写入 artifacts。
 
@@ -440,6 +466,16 @@ notes/terminology.md
 - 明确标注 `Draft status: scaffold only; terms not extracted yet.`；
 - 不自动从标题或摘要中机械抽取术语。
 
+当前 Python MVP 已做 Terminology Evidence MVP：
+
+- 读取 `notes/evidence-map.md`、`notes/README.md` 和 `notes/terminology.md`；
+- 只从 README 中 `Page N ... evidence` 格式的证据行抽取候选术语；
+- 用 evidence map 校验 page evidence 存在，避免写入无页码支撑的术语；
+- 更新 `notes/terminology.md`；
+- 每个候选术语保留来源章节、first seen page 和 follow-up reading；
+- 明确标注 `Draft status: terminology evidence MVP; terms require human review.`；
+- 不生成完整术语解释，不从标题或摘要机械列词。
+
 ## 9. 疑难点提取流程
 
 ### 输出
@@ -482,6 +518,16 @@ notes/doubts.md
 - 写入推荐疑难点章节；
 - 明确标注 `Draft status: scaffold only; doubts not generated yet.`；
 - 不自动编造开放问题、公式疑问或实现疑问。
+
+当前 Python MVP 已做 Doubts Evidence MVP：
+
+- 读取 `notes/README.md`、`notes/terminology.md` 和 `notes/doubts.md`；
+- 从 README 的 `Page N ... evidence` 行读取 Core Method、Experiments 和 Limitations 证据；
+- 从 README 的 Deep Q&A 章节复用已有来源问题；
+- 从 terminology first-seen 条目生成术语 follow-up question；
+- 更新 `notes/doubts.md`；
+- 明确标注 `Draft status: doubts evidence MVP; questions require human review.`；
+- 不直接从 PDF 泛泛生成开放问题，不把候选问题包装成最终疑难点分析。
 
 ## 10. 面试项目映射流程
 
@@ -540,6 +586,15 @@ notes/interview-project.md
 - 写入推荐项目映射章节；
 - 明确标注 `Draft status: scaffold only; suitability not assessed yet.`；
 - 不自动给出适配度结论、不设计完整项目方案。
+
+当前 Python MVP 已做 Interview Project Mapping Assessment：
+
+- 读取 `notes/README.md`、`notes/code-references.md`、`notes/doubts.md` 和 `notes/interview-project.md`；
+- 按方法证据、实验证据、实践提示、本地代码映射和风险信号输出 high / medium / low / not recommended；
+- 更新 `notes/interview-project.md`；
+- 写入最小 demo 范围、技术亮点、风险、已有代码关联和面试讲述点；
+- 明确标注 assessment MVP，需要人工复查；
+- 不生成完整项目方案，不承诺可直接用于面试。
 
 ## 11. 研究包验证流程
 
@@ -649,4 +704,4 @@ Streamlit 工作台应该把 timeline 渲染成可视化 plan 或任务时间线
 - `notes/evidence-map.md` 存在，并提供页码级文本证据入口。
 - `notes/deep-note-plan.md` 存在，并清楚列出各主笔记章节的生成准备度。
 
-当前 Step 13 满足文件存在性、页码级文本证据、深度笔记准备度计划，以及 TL;DR / Paper Overview 的保守证据草稿部分；深度方法解释、可复用术语、未解决问题和具体项目判断仍未满足。
+当前 Step 23 满足文件存在性、页码级文本证据、深度笔记准备度计划，TL;DR / Paper Overview / Background and Motivation / Core Method / Experiments / Limitations / Deep Q&A / Practical Takeaways 的保守证据草稿、有页码证据的术语候选、从证据草稿派生的疑难点候选、本地代码目录的文件级代码映射候选，以及面试项目适配度评估；完整方法解释、实验深度解读、完整术语解释、完整疑难点分析、行级代码方法映射和完整项目方案仍未满足。

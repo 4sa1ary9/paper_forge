@@ -13,7 +13,7 @@ PaperForge Agent 不是一个只有代码的项目。它是一个 agent workflow
 
 这份文档用于规定项目后续应该准备哪些 Markdown 文档。
 
-当前文档状态应以 `docs/PROGRESS.md` 和 `docs/STATUS_REVIEW.md` 为准。截至 Step 13，项目已经完成 scaffold MVP + PDF text evidence map + deep note readiness gate + conservative deep note writing MVP；完整深度笔记正文生成、段落级 evidence map、RAG 和代码仓库分析仍属于后续规划。
+当前文档状态应以 `docs/PROGRESS.md` 和 `docs/STATUS_REVIEW.md` 为准。截至 Step 23，项目已经完成 scaffold MVP + PDF text evidence map + deep note readiness gate + conservative deep note writing MVP（含 Core Method、Experiments、Limitations、Deep Q&A 和 Practical Takeaways 证据草稿）+ terminology evidence MVP + doubts evidence MVP + code mapping evidence MVP + interview project assessment MVP；完整深度笔记正文生成、完整术语解释、完整疑难点分析、完整项目方案、段落级 evidence map、RAG、远端仓库读取和行级代码分析仍属于后续规划。
 
 ## 2. 当前必须文档
 
@@ -63,6 +63,48 @@ PaperForge Agent 不是一个只有代码的项目。它是一个 agent workflow
 - 设计 Streamlit timeline；
 - 测试一个论文任务是否完成；
 - 约束 agent 输出格式。
+
+### docs/EXTENSION_ROADMAP.md
+
+作用：
+
+- 独立记录核心 MVP 之后的扩展路线；
+- 说明每个扩展阶段的目标、输入、输出、边界和验证方式；
+- 防止下一步方向散落在多个文档里。
+
+使用场景：
+
+- Step 23 核心 MVP 完成后选择下一阶段；
+- 判断扩展功能优先级；
+- 面试时解释“当前完成了什么，后续还能怎么扩展”。
+
+### docs/CHANGE_REQUEST_LLM_QUERY_AND_AI_READER.md
+
+作用：
+
+- 记录 LLM Query Planner 与 `ai-paper-reader` Prompt Pack 的变更设计；
+- 明确为什么 `unet` 这类简称需要先做论文身份规划；
+- 明确 `ai-paper-reader` 的准确 skill 文件路径；
+- 约束第一版只生成 prompt pack，不把本地 Codex skill 当作 Python 包调用。
+
+使用场景：
+
+- 实现 Extension 0 前先看这里；
+- 判断 query planner、arXiv 查询和阅读笔记 prompt 的边界；
+- 防止把“复用 skill”误实现成运行时强耦合。
+
+### docs/PROMPT_IMPLEMENT_LLM_QUERY_AND_AI_READER.md
+
+作用：
+
+- 保存可复制给另一个 Codex 对话的实现提示词；
+- 明确实现文件、测试要求、验证命令和禁止扩 scope 的边界；
+- 要求另一个对话读取 `C:/Users/Administrator/.codex/skills/neversight-skills_feed-ai-paper-reader/SKILL.md`。
+
+使用场景：
+
+- 需要让新的 Codex 对话继续实现 Extension 0；
+- 当前对话不直接改代码，只把需求整理成可执行提示词。
 
 ### docs/PROGRESS.md
 
@@ -259,6 +301,9 @@ PaperForge Agent 不是一个只有代码的项目。它是一个 agent workflow
 README.md                         已创建
 docs/PROJECT_GUIDE.md             已创建
 docs/WORKFLOW_SPEC.md             已创建
+docs/EXTENSION_ROADMAP.md         已创建
+docs/CHANGE_REQUEST_LLM_QUERY_AND_AI_READER.md 已创建
+docs/PROMPT_IMPLEMENT_LLM_QUERY_AND_AI_READER.md 已创建
 docs/DOCUMENTATION_GUIDE.md       已创建
 docs/PROGRESS.md                  已创建
 docs/BUILD_STEPS.md               已创建

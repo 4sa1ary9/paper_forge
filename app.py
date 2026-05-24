@@ -6,11 +6,11 @@ from pathlib import Path
 import streamlit as st
 
 from paperforge.asset_collector import run_asset_collection
-from paperforge.code_linker import run_code_linking
+from paperforge.code_linker import run_code_linking, run_code_mapping_evidence
 from paperforge.deep_note_planner import run_deep_note_planning
 from paperforge.deep_note_writer import run_deep_note_writing
-from paperforge.doubts_agent import run_doubts_scaffold
-from paperforge.interview_mapper import run_interview_mapping_scaffold
+from paperforge.doubts_agent import run_doubts_evidence, run_doubts_scaffold
+from paperforge.interview_mapper import run_interview_mapping_assessment, run_interview_mapping_scaffold
 from paperforge.intake_agent import run_paper_intake
 from paperforge.note_writer import run_note_writing
 from paperforge.package_validator import run_package_validation
@@ -18,7 +18,7 @@ from paperforge.pdf_image_extractor import run_pdf_image_extraction
 from paperforge.pdf_text_extractor import run_pdf_text_extraction
 from paperforge.source_enrichment import run_source_enrichment
 from paperforge.storage import get_data_dir, list_jobs
-from paperforge.terminology_agent import run_terminology_scaffold
+from paperforge.terminology_agent import run_terminology_evidence, run_terminology_scaffold
 
 
 st.set_page_config(
@@ -55,7 +55,11 @@ def main() -> None:
             14. 验证研究包状态
             15. 规划深度笔记生成准备度
             16. 写入保守版深度笔记草稿
-            17. 展示 timeline 和 artifacts
+            17. 写入术语证据草稿
+            18. 写入疑难点证据草稿
+            19. 写入代码映射证据草稿
+            20. 评估面试项目适配度
+            21. 展示 timeline 和 artifacts
             """
         )
 
@@ -122,6 +126,16 @@ def main() -> None:
             active_job = run_code_linking(active_job)
         st.success(f"Code linking finished: {active_job.status}")
 
+    local_code_repo = st.text_input(
+        "本地代码仓库路径（可选；不自动 clone）",
+        value="",
+    )
+    if active_job.metadata and st.button("Write Code Mapping Evidence"):
+        code_repo_path = local_code_repo.strip() or None
+        with st.spinner("Code Mapping Agent 正在读取用户提供的本地代码目录..."):
+            active_job = run_code_mapping_evidence(active_job, code_repo_path)
+        st.success(f"Code mapping evidence finished: {active_job.status}")
+
     if active_job.metadata and st.button("Write Note Scaffold"):
         with st.spinner("Note Writer Agent 正在生成笔记骨架..."):
             active_job = run_note_writing(active_job)
@@ -142,6 +156,11 @@ def main() -> None:
             active_job = run_interview_mapping_scaffold(active_job)
         st.success("Interview mapping scaffold written.")
 
+    if active_job.metadata and st.button("Assess Interview Project"):
+        with st.spinner("Interview Mapper Agent 正在评估面试项目适配度..."):
+            active_job = run_interview_mapping_assessment(active_job)
+        st.success(f"Interview project assessment finished: {active_job.status}")
+
     if active_job.metadata and st.button("Extract PDF Text Evidence"):
         with st.spinner("PDF Text Evidence Extractor 正在提取正文证据..."):
             active_job = run_pdf_text_extraction(active_job)
@@ -161,6 +180,16 @@ def main() -> None:
         with st.spinner("Deep Note Writer 正在写入带证据标记的保守草稿..."):
             active_job = run_deep_note_writing(active_job)
         st.success(f"Deep note writing finished: {active_job.status}")
+
+    if active_job.metadata and st.button("Write Terminology Evidence"):
+        with st.spinner("Terminology Agent 正在写入带页码证据的术语草稿..."):
+            active_job = run_terminology_evidence(active_job)
+        st.success(f"Terminology evidence writing finished: {active_job.status}")
+
+    if active_job.metadata and st.button("Write Doubts Evidence"):
+        with st.spinner("Doubts Agent 正在写入带证据标记的疑难点草稿..."):
+            active_job = run_doubts_evidence(active_job)
+        st.success(f"Doubts evidence writing finished: {active_job.status}")
 
     render_job(active_job, data_dir)
 

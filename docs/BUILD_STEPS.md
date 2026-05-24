@@ -1651,3 +1651,1255 @@ notes/deep-note-plan.md + notes/evidence-map.md + notes/README.md
 ```
 
 Core Method 和 Experiments 需要更细的证据选择规则，建议不要和 Background 一次性混在一起做。
+
+## Step 14: Deep Note Writer Background MVP
+
+### 目标
+
+在 Step 13 已经验证 TL;DR 和 Paper Overview 写入链路后，继续保守扩展到 Background and Motivation：
+
+```text
+notes/deep-note-plan.md + notes/evidence-map.md + notes/README.md
+  -> 只处理 ready 的 Background and Motivation
+  -> 更新 notes/README.md
+  -> 保留 page evidence 和人工复查标记
+```
+
+本阶段仍然不生成 Core Method、Experiments、Code Mapping、Deep Q&A 或 Practical Takeaways。
+
+### 为什么这样做
+
+Background and Motivation 比 Core Method 和 Experiments 风险更低，因为它主要依赖 introduction / motivation / background 相关文本证据，不需要先解析公式、方法图或实验表格。
+
+但它仍然不能直接复用“前两页 evidence”：
+
+- PDF 前几页可能包含版权/授权声明；
+- introduction 后面可能紧跟 Figure caption；
+- 图注页不应该被写成 motivation evidence；
+- 输出仍然必须标注人工复查。
+
+所以 Step 14 只做一个 Background 专用页筛选：
+
+- 优先选择包含 introduction、motivation、background 的证据页；
+- 避开明显以 `Figure ` 开头的图注页；
+- 找不到匹配页时再回退到非图注页；
+- 每条内容保留 `notes/evidence-map.md` 页码。
+
+### 已完成文件
+
+修改核心模块：
+
+- `paperforge/deep_note_writer.py`
+
+新增测试：
+
+- `tests/test_deep_note_writer.py`
+
+更新文档：
+
+- `README.md`
+- `docs/PROJECT_GUIDE.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/PROGRESS.md`
+- `docs/BUILD_STEPS.md`
+- `docs/STATUS_REVIEW.md`
+- `docs/DOCUMENTATION_GUIDE.md`
+- `docs/AI_LEARNING_PROMPT.md`
+- `docs/self/learn.md`
+
+### 当前能力
+
+已支持：
+
+- 将 Background and Motivation 加入 Deep Note Writer 的目标章节；
+- 只在 readiness table 标记为 `ready` 时写入 Background；
+- 保持 TL;DR、Paper Overview blocked 时不改；
+- Background 输出 primary background evidence pages；
+- Background 输出 page-level motivation evidence；
+- Background 避开明显图注页；
+- Core Method 仍然保持 `Not generated yet.`。
+
+### 验证方式
+
+运行测试：
+
+```powershell
+uv run python -m pytest
+```
+
+运行真实流水线：
+
+```powershell
+uv run python scripts/run_pipeline.py https://arxiv.org/abs/1706.03762 https://github.com/harvardnlp/annotated-transformer
+```
+
+当前验证结果：
+
+```text
+pytest: 31 passed
+compileall: app.py paperforge tests scripts passed
+真实样例: https://arxiv.org/abs/1706.03762 -> note.write_deep_note_mvp completed
+输出: paper-vault/attention-is-all-you-need/notes/README.md
+```
+
+真实样例中，Background and Motivation 只引用 page 2 的 introduction 证据，未把 `Figure 1` 图注页写入 motivation evidence。
+
+### 这一阶段没有做什么
+
+这些能力继续留到后续步骤：
+
+- Core Method 自动解释；
+- Experiments 自动解读；
+- 代码到论文方法的真实映射；
+- 自动抽取和解释术语；
+- 自动生成疑难点；
+- 自动判断面试项目适配度；
+- RAG / 向量检索。
+
+### 下一步建议
+
+下一步建议做 **Deep Note Writer Core Method MVP**：
+
+```text
+notes/deep-note-plan.md + notes/evidence-map.md + images/manifest.md + notes/README.md
+  -> 只处理 ready 的 Core Method
+  -> 保留 page evidence、figure evidence 和人工复查标记
+```
+
+Core Method 需要同时引用文本证据和图片 manifest，建议继续保守实现，不一次性扩展 Experiments。
+
+## Step 15: Deep Note Writer Core Method MVP
+
+### 目标
+
+在 TL;DR、Paper Overview、Background and Motivation 已经验证写入链路后，继续保守扩展到 Core Method：
+
+```text
+notes/deep-note-plan.md + notes/evidence-map.md + images/manifest.md + notes/README.md
+  -> 只处理 ready 的 Core Method
+  -> 更新 notes/README.md
+  -> 保留 page evidence、figure evidence 和人工复查标记
+```
+
+本阶段仍然不生成 Experiments、Code Mapping、Deep Q&A、Limitations 或 Practical Takeaways。
+
+### 为什么这样做
+
+Core Method 比 Background 更容易误写，因为它通常同时依赖正文方法页和架构图。为了避免把未验证解释包装成结论，本阶段只做 evidence-grounded seed：
+
+- 从 `notes/evidence-map.md` 选择 method、model、architecture、attention 等方法证据页；
+- 从 `images/manifest.md` 读取图片条目，保留 figure evidence 入口；
+- 如果 Core Method 已标记 ready 但图片 manifest 缺失，则步骤返回 `partial`，不改写主笔记；
+- 输出仍然明确要求人工复查。
+
+### 已完成文件
+
+修改核心模块：
+
+- `paperforge/deep_note_writer.py`
+
+新增测试：
+
+- `tests/test_deep_note_writer.py`
+
+更新文档：
+
+- `README.md`
+- `docs/PROJECT_GUIDE.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/PROGRESS.md`
+- `docs/BUILD_STEPS.md`
+- `docs/STATUS_REVIEW.md`
+- `docs/DOCUMENTATION_GUIDE.md`
+- `docs/AI_LEARNING_PROMPT.md`
+- `docs/self/learn.md`
+
+### 当前能力
+
+已支持：
+
+- 将 Core Method 加入 Deep Note Writer 的目标章节；
+- 只在 readiness table 标记为 `ready` 时写入 Core Method；
+- Core Method 输出 primary method evidence pages；
+- Core Method 输出 page-level method evidence；
+- Core Method 输出来自 `../images/manifest.md` 的 figure evidence；
+- manifest 缺失时返回 `partial`，并保持 README 不变；
+- Experiments 仍然保持 `Not generated yet.`。
+
+### 验证方式
+
+运行测试：
+
+```powershell
+uv run python -m pytest
+```
+
+运行编译检查：
+
+```powershell
+uv run python -m compileall app.py paperforge tests scripts
+```
+
+运行真实流水线：
+
+```powershell
+uv run python scripts/run_pipeline.py https://arxiv.org/abs/1706.03762 https://github.com/harvardnlp/annotated-transformer
+```
+
+当前验证结果：
+
+```text
+pytest: 33 passed
+compileall: app.py paperforge tests scripts passed
+git diff --check: passed
+真实样例: https://arxiv.org/abs/1706.03762 -> note.write_deep_note_mvp completed
+输出: paper-vault/attention-is-all-you-need/notes/README.md
+```
+
+真实样例中，Core Method 写入了 page 2、page 3 的 method evidence，并引用 `fig001_page3_img1.png` 和 `fig002_page4_img1.png` 的 figure evidence。Experiments 和 Limitations 仍保持 `Not generated yet.`。
+
+### 这一阶段没有做什么
+
+这些能力继续留到后续步骤：
+
+- Experiments 自动解读；
+- Limitations 自动生成；
+- 代码到论文方法的真实映射；
+- 自动抽取和解释术语；
+- 自动生成疑难点；
+- 自动判断面试项目适配度；
+- RAG / 向量检索。
+
+### 下一步建议
+
+下一步建议做 **Deep Note Writer Experiments MVP**：
+
+```text
+notes/deep-note-plan.md + notes/evidence-map.md + images/manifest.md + notes/README.md
+  -> 只处理 ready 的 Experiments
+  -> 保留 page evidence、table/figure evidence 和人工复查标记
+```
+
+Experiments 需要区分实验表格、训练设置、结果页和正文解释，建议继续保守实现，不一次性扩展 Code Mapping。
+
+## Step 16: Deep Note Writer Experiments MVP
+
+### 目标
+
+在 TL;DR、Paper Overview、Background and Motivation、Core Method 已经验证写入链路后，继续保守扩展到 Experiments：
+
+```text
+notes/deep-note-plan.md + notes/evidence-map.md + images/manifest.md + notes/README.md
+  -> 只处理 ready 的 Experiments
+  -> 更新 notes/README.md
+  -> 保留 page evidence、table/result evidence、training detail evidence、figure/table evidence 和人工复查标记
+```
+
+本阶段仍然不生成 Code Mapping、Deep Q&A、Limitations 或 Practical Takeaways，也不把实验表格证据包装成完整实验解读。
+
+### 为什么这样做
+
+Experiments 比前面的章节更容易误写，因为 PDF page excerpt 里可能混有方法页、图注页和结果表格。为了保持证据约束，本阶段只做 evidence-grounded seed：
+
+- 从 `notes/evidence-map.md` 选择 experiment、evaluation、benchmark、result、ablation、table 等实验证据页；
+- 单独列出 table/result evidence pages；
+- 单独列出 training detail evidence pages；
+- 从 `images/manifest.md` 读取图片条目，保留 figure/table evidence 入口；
+- 使用词边界匹配，避免把 `resulting` 误判成 result，把 `interpretable` 误判成 table；
+- 输出仍然明确要求人工复查。
+
+### 已完成文件
+
+修改核心模块：
+
+- `paperforge/deep_note_writer.py`
+
+新增测试：
+
+- `tests/test_deep_note_writer.py`
+
+更新文档：
+
+- `README.md`
+- `docs/PROJECT_GUIDE.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/PROGRESS.md`
+- `docs/BUILD_STEPS.md`
+- `docs/STATUS_REVIEW.md`
+- `docs/DOCUMENTATION_GUIDE.md`
+- `docs/AI_LEARNING_PROMPT.md`
+- `docs/self/learn.md`
+
+### 当前能力
+
+已支持：
+
+- 将 Experiments 加入 Deep Note Writer 的目标章节；
+- 只在 readiness table 标记为 `ready` 时写入 Experiments；
+- Experiments 输出 primary experiment evidence pages；
+- Experiments 输出 page-level experiment evidence；
+- Experiments 输出 table/result evidence pages；
+- Experiments 输出 training detail evidence pages；
+- Experiments 输出来自 `../images/manifest.md` 的 figure/table evidence；
+- 使用词边界匹配减少 substring 误选；
+- Limitations 仍然保持 `Not generated yet.`。
+
+### 验证方式
+
+运行测试：
+
+```powershell
+uv run python -m pytest
+```
+
+运行编译检查：
+
+```powershell
+uv run python -m compileall app.py paperforge tests scripts
+```
+
+运行真实流水线：
+
+```powershell
+uv run python scripts/run_pipeline.py https://arxiv.org/abs/1706.03762 https://github.com/harvardnlp/annotated-transformer
+```
+
+当前验证结果：
+
+```text
+pytest: 35 passed
+compileall: app.py paperforge tests scripts passed
+git diff --check: passed
+真实样例: https://arxiv.org/abs/1706.03762 -> note.write_deep_note_mvp completed
+输出: paper-vault/attention-is-all-you-need/notes/README.md
+```
+
+真实样例中，Experiments 写入了 page 6、page 8 的 table/result evidence，并引用 `fig001_page3_img1.png` 和 `fig002_page4_img1.png` 的 figure/table evidence。Deep Q&A、Limitations 和 Practical Takeaways 仍保持 `Not generated yet.`。
+
+### 这一阶段没有做什么
+
+这些能力继续留到后续步骤：
+
+- Limitations 自动生成；
+- Deep Q&A 自动生成；
+- Practical Takeaways 自动生成；
+- 代码到论文方法的真实映射；
+- 自动抽取和解释术语；
+- 自动生成疑难点；
+- 自动判断面试项目适配度；
+- RAG / 向量检索。
+
+### 下一步建议
+
+下一步建议做 **Deep Note Writer Limitations MVP**：
+
+```text
+notes/deep-note-plan.md + notes/evidence-map.md + notes/README.md
+  -> 只处理 ready 的 Limitations
+  -> 保留 page evidence 和人工复查标记
+```
+
+Limitations 不需要代码仓库证据，可以继续沿用 evidence-grounded seed 的保守策略。Deep Q&A 和 Practical Takeaways 依赖方法、实验和限制部分的质量，建议继续单独设计。
+
+## Step 17: Deep Note Writer Limitations MVP
+
+### 目标
+
+在 TL;DR、Paper Overview、Background and Motivation、Core Method、Experiments 已经验证写入链路后，继续保守扩展到 Limitations：
+
+```text
+notes/deep-note-plan.md + notes/evidence-map.md + notes/README.md
+  -> 只处理 ready 的 Limitations
+  -> 更新 notes/README.md
+  -> 保留 page evidence 和人工复查标记
+```
+
+本阶段仍然不生成 Deep Q&A、Practical Takeaways 或 Code Mapping，也不把限制证据包装成完整批判性分析。
+
+### 为什么这样做
+
+Limitations 可以继续沿用 page-level evidence map，不需要图片 manifest 或代码仓库证据。但限制类证据容易被误选，例如 `unlimited` 不能算作 limitation 证据。因此本阶段只做 conservative evidence seed：
+
+- 从 `notes/evidence-map.md` 选择 limitation、future work、failure、constraint、risk 等限制/风险证据页；
+- 避开明显图注页；
+- 使用词边界匹配，避免 substring 误判；
+- 没有命中时回退到非图注正文页；
+- 输出仍然明确要求人工复查。
+
+### 已完成文件
+
+修改核心模块：
+
+- `paperforge/deep_note_writer.py`
+
+新增测试：
+
+- `tests/test_deep_note_writer.py`
+
+更新文档：
+
+- `README.md`
+- `docs/PROJECT_GUIDE.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/PROGRESS.md`
+- `docs/BUILD_STEPS.md`
+- `docs/STATUS_REVIEW.md`
+- `docs/DOCUMENTATION_GUIDE.md`
+- `docs/AI_LEARNING_PROMPT.md`
+- `docs/self/learn.md`
+
+### 当前能力
+
+已支持：
+
+- 将 Limitations 加入 Deep Note Writer 的目标章节；
+- 只在 readiness table 标记为 `ready` 时写入 Limitations；
+- Limitations 输出 primary limitation evidence pages；
+- Limitations 输出 page-level limitation evidence；
+- Limitations 不要求 `images/manifest.md`；
+- 使用词边界匹配减少 substring 误选；
+- Deep Q&A 和 Practical Takeaways 仍然保持 `Not generated yet.`。
+
+### 验证方式
+
+运行测试：
+
+```powershell
+uv run python -m pytest
+```
+
+运行编译检查：
+
+```powershell
+uv run python -m compileall app.py paperforge tests scripts
+```
+
+运行真实流水线：
+
+```powershell
+uv run python scripts/run_pipeline.py https://arxiv.org/abs/1706.03762 https://github.com/harvardnlp/annotated-transformer
+```
+
+当前验证结果：
+
+```text
+pytest: 37 passed
+compileall: app.py paperforge tests scripts passed
+git diff --check: passed
+真实样例: https://arxiv.org/abs/1706.03762 -> note.write_deep_note_mvp completed
+```
+
+真实样例中，Limitations 写入了 page 2、page 7 的限制/约束证据。Deep Q&A 和 Practical Takeaways 仍保持 `Not generated yet.`。
+
+### 这一阶段没有做什么
+
+这些能力继续留到后续步骤：
+
+- Deep Q&A 自动生成；
+- Practical Takeaways 自动生成；
+- 代码到论文方法的真实映射；
+- 自动抽取和解释术语；
+- 自动生成疑难点；
+- 自动判断面试项目适配度；
+- RAG / 向量检索。
+
+### 下一步建议
+
+下一步建议做 **Deep Note Writer Deep Q&A MVP**：
+
+```text
+notes/deep-note-plan.md + notes/evidence-map.md + notes/README.md
+  -> 从已写入的 Core Method、Experiments、Limitations 证据草稿派生问题
+  -> 保留 page evidence、问题来源章节和人工复查标记
+```
+
+Deep Q&A 不应该直接从 PDF 泛泛生成问题，而应该依赖已经写入主笔记的方法、实验和限制证据草稿。
+
+## Step 18: Deep Note Writer Deep Q&A MVP
+
+### 目标
+
+在 Core Method、Experiments、Limitations 已经能写入保守证据草稿后，继续保守扩展到 Deep Q&A：
+
+```text
+notes/deep-note-plan.md + notes/evidence-map.md + notes/README.md
+  -> 只处理 readiness 允许的 Deep Q&A
+  -> 从 Core Method、Experiments、Limitations 证据草稿派生问题
+  -> 更新 notes/README.md
+  -> 保留来源章节、page evidence 和人工复查标记
+```
+
+本阶段仍然不生成 Practical Takeaways、Code Mapping 或 Interview Project Mapping，也不直接从 PDF 泛泛生成开放问题。
+
+### 为什么这样做
+
+Deep Q&A 应该服务后续学习复盘，而不是凭空提出看似合理的问题。当前已有 Core Method、Experiments、Limitations 的 evidence-grounded seed，因此 Deep Q&A 可以先做确定性派生：
+
+- Deep Note Planner 在 evidence map 和 image manifest 可用时，允许 Deep Q&A 进入写入阶段；
+- Deep Note Writer 先按顺序写入 Core Method、Experiments、Limitations；
+- Deep Q&A 从这些已写入章节中抽取页码证据；
+- 每个问题标明来源章节和 page；
+- 输出仍然明确要求人工复查。
+
+### 已完成文件
+
+修改核心模块：
+
+- `paperforge/deep_note_planner.py`
+- `paperforge/deep_note_writer.py`
+
+新增测试：
+
+- `tests/test_deep_note_planner.py`
+- `tests/test_deep_note_writer.py`
+
+更新文档：
+
+- `README.md`
+- `docs/PROJECT_GUIDE.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/PROGRESS.md`
+- `docs/BUILD_STEPS.md`
+- `docs/STATUS_REVIEW.md`
+- `docs/DOCUMENTATION_GUIDE.md`
+- `docs/AI_LEARNING_PROMPT.md`
+- `docs/self/learn.md`
+
+### 当前能力
+
+已支持：
+
+- Deep Note Planner 将 Deep Q&A 标记为 ready，前提是 PDF text evidence map 和 image manifest 都存在；
+- Deep Note Writer 将 Deep Q&A 加入目标章节；
+- Deep Q&A 从 Core Method、Experiments、Limitations 的 page evidence 派生问题；
+- Deep Q&A 输出来源章节和页码；
+- Practical Takeaways 仍然保持 `Not generated yet.`。
+
+### 验证方式
+
+运行测试：
+
+```powershell
+uv run python -m pytest
+```
+
+运行编译检查：
+
+```powershell
+uv run python -m compileall app.py paperforge tests scripts
+```
+
+运行真实流水线：
+
+```powershell
+uv run python scripts/run_pipeline.py https://arxiv.org/abs/1706.03762 https://github.com/harvardnlp/annotated-transformer
+```
+
+当前验证结果：
+
+```text
+pytest: 38 passed
+compileall: app.py paperforge tests scripts passed
+git diff --check: passed
+真实样例: https://arxiv.org/abs/1706.03762 -> note.write_deep_note_mvp completed
+```
+
+真实样例中，Deep Q&A 生成了 3 个来源问题，分别引用 Core Method page 2、Experiments page 6、Limitations page 2。Practical Takeaways 仍保持 `Not generated yet.`。
+
+### 这一阶段没有做什么
+
+这些能力继续留到后续步骤：
+
+- Practical Takeaways 自动生成；
+- 代码到论文方法的真实映射；
+- 自动抽取和解释术语；
+- 自动生成疑难点；
+- 自动判断面试项目适配度；
+- RAG / 向量检索。
+
+### 下一步建议
+
+下一步建议做 **Deep Note Writer Practical Takeaways MVP**：
+
+```text
+notes/deep-note-plan.md + notes/evidence-map.md + notes/README.md
+  -> 从已写入的 Core Method、Experiments、Limitations、Deep Q&A 证据草稿派生 takeaways
+  -> 保留来源章节、page evidence 和人工复查标记
+```
+
+Practical Takeaways 不应该直接变成完整项目建议；面试项目适配度仍然应交给后续 Interview Mapper 阶段。
+
+## Step 19: Deep Note Writer Practical Takeaways MVP
+
+### 目标
+
+在 Core Method、Experiments、Limitations 和 Deep Q&A 已经能写入保守证据草稿后，继续保守扩展到 Practical Takeaways：
+
+```text
+notes/deep-note-plan.md + notes/evidence-map.md + notes/README.md
+  -> 只处理 readiness 允许的 Practical Takeaways
+  -> 从 Core Method、Experiments、Limitations、Deep Q&A 证据草稿派生 takeaways
+  -> 更新 notes/README.md
+  -> 保留来源章节、page evidence 和人工复查标记
+```
+
+本阶段仍然不生成 Code Mapping、Interview Project Mapping 或完整项目建议，也不判断论文是否适合做面试项目。
+
+### 为什么这样做
+
+Practical Takeaways 容易被写成“项目方案”或“落地建议”，这会越过当前证据边界。当前系统只有页码级 evidence map、图片 manifest 和前面章节的保守草稿，还没有代码仓库证据、项目约束或适配度判断。
+
+所以 Step 19 只做学习型 takeaway：
+
+- 从 Core Method 提醒后续解释应绑定方法证据；
+- 从 Experiments 提醒后续实践结论必须先核对实验度量；
+- 从 Limitations 提醒应用前要检查限制和风险；
+- 从 Deep Q&A 提醒先回答生成的问题，再转成项目或面试表述；
+- 输出明确标注这些 takeaways 是 evidence prompts，不是 project recommendations。
+
+### 已完成文件
+
+修改核心模块：
+
+- `paperforge/deep_note_planner.py`
+- `paperforge/deep_note_writer.py`
+
+新增测试：
+
+- `tests/test_deep_note_planner.py`
+- `tests/test_deep_note_writer.py`
+
+更新文档：
+
+- `README.md`
+- `docs/PROJECT_GUIDE.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/PROGRESS.md`
+- `docs/BUILD_STEPS.md`
+- `docs/STATUS_REVIEW.md`
+- `docs/DOCUMENTATION_GUIDE.md`
+- `docs/AI_LEARNING_PROMPT.md`
+- `docs/self/learn.md`
+
+### 当前能力
+
+已支持：
+
+- Deep Note Planner 在 PDF text evidence map 和 image manifest 都存在时，将 Practical Takeaways 标记为 ready；
+- Deep Note Writer 将 Practical Takeaways 加入目标章节；
+- Practical Takeaways 从 Core Method、Experiments、Limitations 的 page evidence 派生学习型 takeaway；
+- Practical Takeaways 读取 Deep Q&A 生成状态，提醒先回答问题再转成项目或面试表述；
+- Practical Takeaways 输出来源章节和页码；
+- 输出明确保留人工复查标记，并说明不是项目建议。
+
+### 验证方式
+
+运行测试：
+
+```powershell
+uv run python -m pytest
+```
+
+运行编译检查：
+
+```powershell
+uv run python -m compileall app.py paperforge tests scripts
+```
+
+运行真实流水线：
+
+```powershell
+uv run python scripts/run_pipeline.py https://arxiv.org/abs/1706.03762 https://github.com/harvardnlp/annotated-transformer
+```
+
+当前验证结果：
+
+```text
+pytest: 39 passed
+compileall: app.py paperforge tests scripts passed
+git diff --check: passed
+真实样例: https://arxiv.org/abs/1706.03762 -> note.write_deep_note_mvp completed
+```
+
+真实样例中，Practical Takeaways 从 Core Method、Experiments、Limitations 和 Deep Q&A 派生学习型 takeaway，不生成项目建议或适配度判断。
+
+### 这一阶段没有做什么
+
+这些能力继续留到后续步骤：
+
+- 自动抽取和解释术语；
+- 自动生成疑难点；
+- 代码到论文方法的真实映射；
+- 自动判断面试项目适配度；
+- RAG / 向量检索。
+
+### 下一步建议
+
+下一步建议做 **Terminology Evidence MVP**：
+
+```text
+notes/evidence-map.md + notes/README.md + notes/terminology.md
+  -> 从 evidence map 和 README 的保守证据草稿中抽取候选术语
+  -> 只写入有页码证据的术语条目
+  -> 保留 first seen page、来源章节和人工复查标记
+```
+
+这一步仍然不应该生成完整术语百科，也不应该从标题或摘要机械列词。
+
+## Step 20: Terminology Evidence MVP
+
+### 目标
+
+在主笔记已经有保守证据草稿后，继续扩展术语库：
+
+```text
+notes/evidence-map.md + notes/README.md + notes/terminology.md
+  -> 从 README 的 page evidence 行抽取术语候选
+  -> 用 evidence-map 校验 page evidence 存在
+  -> 更新 notes/terminology.md
+  -> 保留 first seen page、来源章节和人工复查标记
+```
+
+本阶段仍然不生成完整术语百科，也不从论文标题、摘要或无页码内容中机械列词。
+
+### 为什么这样做
+
+术语库应该服务学习复盘，但如果直接从标题或摘要中抓名词，会很容易生成看似有用但没有证据定位的词表。当前项目已经有 `notes/evidence-map.md` 和 `notes/README.md` 的证据草稿，所以 Step 20 只做一个可验证的最小版本：
+
+- 只读取 README 中 `Page N ... evidence` 格式的证据行；
+- 只写入 evidence map 中存在的页码；
+- 写入候选术语、来源章节和 first seen page；
+- 不自动写完整解释，只标注 human explanation required；
+- Practical Takeaways 这类没有 `Page N ... evidence` 的提示行不会成为术语来源。
+- 抽取规则需要过滤句子碎片，避免把 `Introduction Recurrent`、`per-layer complexity and`、`state-of-the-art models on` 这类上下文片段当成术语。
+
+### 已完成文件
+
+修改核心模块：
+
+- `paperforge/terminology_agent.py`
+
+修改工作台和脚本：
+
+- `app.py`
+- `scripts/run_pipeline.py`
+
+新增测试：
+
+- `tests/test_terminology_agent.py`
+
+更新文档：
+
+- `README.md`
+- `docs/PROJECT_GUIDE.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/PROGRESS.md`
+- `docs/BUILD_STEPS.md`
+- `docs/STATUS_REVIEW.md`
+- `docs/DOCUMENTATION_GUIDE.md`
+- `docs/AI_LEARNING_PROMPT.md`
+- `docs/self/learn.md`
+
+### 当前能力
+
+已支持：
+
+- 保留 `run_terminology_scaffold` 的骨架生成行为；
+- 新增 `run_terminology_evidence`，作为独立 evidence writer；
+- 缺少 `notes/evidence-map.md`、`notes/README.md` 或 `notes/terminology.md` 时返回 `partial`；
+- 从 README 的页码证据行抽取候选术语；
+- 用 evidence map 校验页码，避免写入无证据术语；
+- 写入 `notes/terminology.md`，每个术语包含 Category、Short explanation、Why it matters、Related terms、First seen in 和 Follow-up reading；
+- 将 `knowledge.write_terminology_evidence` 写入 timeline 和 artifacts；
+- Streamlit 增加 `Write Terminology Evidence` 按钮；
+- 真实流水线在 deep note writing 后继续执行 terminology evidence。
+
+### 验证方式
+
+运行测试：
+
+```powershell
+uv run python -m pytest
+```
+
+运行编译检查：
+
+```powershell
+uv run python -m compileall app.py paperforge tests scripts
+```
+
+运行真实流水线：
+
+```powershell
+uv run python scripts/run_pipeline.py https://arxiv.org/abs/1706.03762 https://github.com/harvardnlp/annotated-transformer
+```
+
+当前验证结果：
+
+```text
+pytest: 42 passed
+compileall: app.py paperforge tests scripts passed
+git diff --check: passed
+真实样例: https://arxiv.org/abs/1706.03762 -> knowledge.write_terminology_evidence completed
+```
+
+真实样例中，`notes/terminology.md` 写入了带 first seen page 和来源章节的术语候选，并保留人工复查标记。
+
+### 这一阶段没有做什么
+
+这些能力继续留到后续步骤：
+
+- 自动生成完整术语解释；
+- 自动生成疑难点；
+- 代码到论文方法的真实映射；
+- 自动判断面试项目适配度；
+- RAG / 向量检索。
+
+### 下一步建议
+
+下一步建议做 **Doubts Evidence MVP**：
+
+```text
+notes/README.md + notes/terminology.md + notes/doubts.md
+  -> 从方法、实验、限制、Deep Q&A、Practical Takeaways 和术语条目派生疑难点
+  -> 保留来源章节、page evidence 和人工复查标记
+  -> 更新 notes/doubts.md
+```
+
+这一步仍然不应该泛泛生成开放问题，也不应该把未验证的问题包装成最终结论。
+
+## Step 21: Doubts Evidence MVP
+
+### 目标
+
+在主笔记和术语库已经有 evidence-backed 草稿后，继续扩展疑难点文件：
+
+```text
+notes/README.md + notes/terminology.md + notes/doubts.md
+  -> 从已有证据草稿派生疑难点候选
+  -> 更新 notes/doubts.md
+  -> 保留来源章节、page evidence 和人工复查标记
+```
+
+本阶段仍然不生成完整疑难点百科，也不直接从 PDF 泛泛生成开放问题。
+
+### 为什么这样做
+
+疑难点文件应该帮助后续复盘，但如果没有证据边界，很容易变成通用问题清单。Step 21 只利用已经落盘并经过前面阶段约束的材料：
+
+- `notes/README.md` 中 Core Method、Experiments、Limitations 和 Deep Q&A 的证据草稿；
+- `notes/terminology.md` 中有 first seen page 的术语候选；
+- `notes/doubts.md` 的既有结构。
+
+因此输出的是可追溯的 question seed，而不是最终阅读结论。
+
+### 已完成文件
+
+修改核心模块：
+
+- `paperforge/doubts_agent.py`
+
+修改工作台和脚本：
+
+- `app.py`
+- `scripts/run_pipeline.py`
+
+新增测试：
+
+- `tests/test_doubts_agent.py`
+
+更新文档：
+
+- `README.md`
+- `docs/PROJECT_GUIDE.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/PROGRESS.md`
+- `docs/BUILD_STEPS.md`
+- `docs/STATUS_REVIEW.md`
+- `docs/DOCUMENTATION_GUIDE.md`
+- `docs/AI_LEARNING_PROMPT.md`
+- `docs/self/learn.md`
+
+### 当前能力
+
+已支持：
+
+- 保留 `run_doubts_scaffold` 的骨架生成行为；
+- 新增 `run_doubts_evidence`，作为独立 evidence writer；
+- 缺少 `notes/README.md`、`notes/terminology.md` 或 `notes/doubts.md` 时返回 `partial`；
+- 从 README 的页码证据行读取方法、实验和限制证据；
+- 从 README 的 Deep Q&A 章节复用已有来源问题；
+- 从 terminology first-seen 条目生成术语 follow-up question；
+- 写入 Open Questions、Confusing Formulas、Missing Implementation Details、Claims That Need Verification 和 Terminology Questions；
+- 将 `knowledge.write_doubts_evidence` 写入 timeline 和 artifacts；
+- Streamlit 增加 `Write Doubts Evidence` 按钮；
+- 真实流水线在 terminology evidence 后继续执行 doubts evidence。
+
+### 验证方式
+
+运行测试：
+
+```powershell
+uv run python -m pytest
+```
+
+运行编译检查：
+
+```powershell
+uv run python -m compileall app.py paperforge tests scripts
+```
+
+运行真实流水线：
+
+```powershell
+uv run python scripts/run_pipeline.py https://arxiv.org/abs/1706.03762 https://github.com/harvardnlp/annotated-transformer
+```
+
+当前验证结果：
+
+```text
+pytest: 44 passed
+compileall: app.py paperforge tests scripts passed
+git diff --check: passed
+真实样例: https://arxiv.org/abs/1706.03762 -> knowledge.write_doubts_evidence completed
+```
+
+真实样例中，`notes/doubts.md` 写入了来自 Core Method、Experiments、Limitations、Deep Q&A 和 terminology 条目的疑难点候选，并保留来源章节、page evidence 和人工复查标记。
+
+实现后修复过一个质量问题：
+
+- Doubts Evidence 初版会把 Experiments 和 Limitations 来源的问题也标成 `Method question`；已改为按来源章节输出 `Method question`、`Experiment question` 或 `Limitation question`，并增加回归测试。
+
+### 这一阶段没有做什么
+
+这些能力继续留到后续步骤：
+
+- 自动生成完整疑难点解释；
+- 代码到论文方法的真实映射；
+- 自动判断面试项目适配度；
+- RAG / 向量检索。
+
+### 下一步建议
+
+下一步建议做 **Code Mapping Evidence MVP**：
+
+```text
+notes/code-references.md + notes/README.md + optional code repo
+  -> 在用户确认后读取或 clone 候选仓库
+  -> 把论文方法点映射到具体代码文件或路径
+  -> 更新 notes/code-references.md
+```
+
+这一步涉及第三方仓库读取或 clone，需要用户确认仓库来源和读取方式后再做。
+
+## Step 22: Code Mapping Evidence MVP
+
+### 目标
+
+在不自动 clone 第三方仓库的前提下，给 `notes/code-references.md` 增加一个可追溯的代码映射证据入口：
+
+```text
+notes/code-references.md + notes/README.md + user-provided local code repo
+  -> 扫描本地代码文件
+  -> 按 Core Method 方法词重合度生成候选代码路径
+  -> 更新 notes/code-references.md
+```
+
+本阶段只做文件级候选映射，不声明行级实现位置，也不把词面匹配包装成真实语义理解。
+
+### 为什么这样做
+
+前一阶段已经生成主笔记、术语和疑难点证据草稿。继续往面试项目映射走之前，需要先把论文方法和代码资产之间建立最小证据桥。
+
+但自动 clone 仓库会扩大 scope，也可能遇到仓库过大、license 不清楚或访问权限问题。因此 Step 22 采用更保守的方式：
+
+- 用户明确提供本地代码仓库路径；
+- PaperForge 只扫描这个本地目录；
+- 缺少本地路径时返回 `needs_user_input`；
+- 输出只作为候选阅读路径，需要人工复查。
+
+### 已完成文件
+
+修改核心模块：
+
+- `paperforge/code_linker.py`
+
+修改工作台和脚本：
+
+- `app.py`
+- `scripts/run_pipeline.py`
+
+新增测试：
+
+- `tests/test_code_linker.py`
+
+更新文档：
+
+- `README.md`
+- `docs/PROJECT_GUIDE.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/PROGRESS.md`
+- `docs/BUILD_STEPS.md`
+- `docs/STATUS_REVIEW.md`
+
+### 当前能力
+
+已支持：
+
+- 保留 `run_code_linking` 的候选仓库整理行为；
+- 新增 `run_code_mapping_evidence`，作为独立 evidence writer；
+- 读取 `notes/code-references.md` 和 `notes/README.md`；
+- 从 `notes/README.md` 的 Core Method 章节提取方法证据词；
+- 扫描用户提供的本地代码目录，过滤常见依赖、构建和缓存目录；
+- 只读取常见代码文件扩展名，并限制文件数量和文件大小；
+- 按方法词在路径和内容中的重合度排序候选代码文件；
+- 更新 `notes/code-references.md` 的 `Code Mapping Evidence` 章节；
+- 没有本地代码路径时将 `code.map_evidence` 标记为 `needs_user_input`；
+- Streamlit 增加 `Write Code Mapping Evidence` 按钮和本地代码路径输入框；
+- 真实流水线脚本支持通过 `PAPERFORGE_CODE_REPO` 环境变量启用本阶段，默认跳过。
+
+### 验证方式
+
+运行测试：
+
+```powershell
+uv run python -m pytest
+```
+
+运行编译检查：
+
+```powershell
+uv run python -m compileall app.py paperforge tests scripts
+```
+
+运行 diff 空白检查：
+
+```powershell
+git diff --check
+```
+
+当前验证结果：
+
+```text
+pytest: 46 passed
+compileall: app.py paperforge tests scripts passed
+git diff --check: passed
+```
+
+单元样例中，本地代码目录里的 `models/attention.py` 能根据 Core Method 中的 `attention`、`encoder` 等方法证据词写入 `notes/code-references.md`。缺少本地代码目录时，step 返回 `needs_user_input`，不会自动 clone。
+
+### 这一阶段没有做什么
+
+这些能力继续留到后续步骤：
+
+- 自动 clone 仓库；
+- 读取远端仓库文件；
+- license 自动判断；
+- 行级方法到代码映射；
+- 语义级代码理解；
+- 自动判断面试项目适配度。
+
+### 下一步建议
+
+下一步建议做 **Interview Project Mapping Assessment MVP**：
+
+```text
+notes/README.md + notes/code-references.md + notes/doubts.md + notes/interview-project.md
+  -> 判断论文是否适合作为面试项目素材
+  -> 输出 high / medium / low 适配度
+  -> 给出最小 demo 范围和人工复查风险
+  -> 更新 notes/interview-project.md
+```
+
+这一步仍然应该基于已有证据输出保守判断，不直接生成完整项目方案。
+
+## Step 23: Interview Project Mapping Assessment MVP
+
+### 目标
+
+在代码映射、主笔记和疑难点证据已经具备后，继续更新 `notes/interview-project.md`：
+
+```text
+notes/README.md + notes/code-references.md + notes/doubts.md + notes/interview-project.md
+  -> 判断论文是否适合作为面试项目素材
+  -> 输出 high / medium / low / not recommended
+  -> 给出最小 demo 范围、技术亮点和风险
+  -> 更新 notes/interview-project.md
+```
+
+本阶段只做 assessment MVP，不生成完整项目方案、不承诺可直接用于面试。
+
+### 为什么这样做
+
+PaperForge 的核心目标之一是把论文研究转成面试项目素材。但如果直接生成完整项目方案，很容易越过当前证据边界。当前已经有：
+
+- 主笔记中的方法、实验、限制和 practical takeaway 证据；
+- `notes/code-references.md` 中的代码候选或文件级映射；
+- `notes/doubts.md` 中的疑难点和风险；
+- `notes/interview-project.md` 的结构化模板。
+
+所以 Step 23 只做一个保守判断：这篇论文目前更像 high、medium、low 还是 not recommended 的面试项目候选，并说明最小 demo 应该如何收窄。
+
+### 已完成文件
+
+修改核心模块：
+
+- `paperforge/interview_mapper.py`
+
+修改工作台和脚本：
+
+- `app.py`
+- `scripts/run_pipeline.py`
+
+新增测试：
+
+- `tests/test_interview_mapper.py`
+
+更新文档：
+
+- `README.md`
+- `docs/PROJECT_GUIDE.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/PROGRESS.md`
+- `docs/BUILD_STEPS.md`
+- `docs/STATUS_REVIEW.md`
+- `docs/DOCUMENTATION_GUIDE.md`
+
+### 当前能力
+
+已支持：
+
+- 保留 `run_interview_mapping_scaffold` 的骨架生成行为；
+- 新增 `run_interview_mapping_assessment`，作为独立 assessment writer；
+- 读取 `notes/README.md`、`notes/code-references.md`、`notes/doubts.md` 和 `notes/interview-project.md`；
+- 根据信号输出 high / medium / low / not recommended：
+  - Core Method page evidence；
+  - Experiments page evidence；
+  - Practical Takeaways 是否生成；
+  - Code Mapping Evidence 是否来自本地扫描；
+  - Doubts / Limitations 是否存在风险信号；
+- 写入 Suitability、Why This Can Become a Project、Why This May Not Be Worth Building、Minimal Demo Version、Full Version、Technical Highlights、Risks、Connection to Existing Projects 和 Interview Talking Points；
+- 缺少输入时返回 `partial`；
+- Streamlit 增加 `Assess Interview Project` 按钮；
+- 真实流水线脚本在 doubts evidence 和可选 code mapping evidence 后执行 interview assessment。
+
+### 验证方式
+
+运行测试：
+
+```powershell
+uv run python -m pytest
+```
+
+运行编译检查：
+
+```powershell
+uv run python -m compileall app.py paperforge tests scripts
+```
+
+运行 diff 空白检查：
+
+```powershell
+git diff --check
+```
+
+当前验证结果：
+
+```text
+pytest: 48 passed
+compileall: app.py paperforge tests scripts passed
+git diff --check: passed
+```
+
+单元样例中，当 `notes/README.md` 有方法、实验、限制和 practical takeaway 证据，且 `notes/code-references.md` 有本地代码映射时，`notes/interview-project.md` 会写入 `Suitability: high`、最小 demo 范围、代码证据和风险边界。缺少 code references 或 doubts 时，step 返回 `partial`。
+
+### 这一阶段没有做什么
+
+这些能力继续留到后续扩展：
+
+- 完整项目方案生成；
+- 自动生成项目代码；
+- 自动 clone 第三方仓库；
+- 行级代码映射；
+- 完整深度论文解释；
+- RAG / 向量检索；
+- 多篇论文批处理。
+
+### 下一步建议
+
+核心 MVP 已完成。扩展路线已经单独整理到 `docs/EXTENSION_ROADMAP.md`。
+
+```text
+docs/EXTENSION_ROADMAP.md
+```
+
+如果继续学习和面试包装，优先建议做段落级 evidence map，因为它能直接提高后续深度笔记、术语解释和项目评估的证据质量。
+
+## 2026-05-24: Extension 0 需求文档化
+
+### 目标
+
+根据最新需求，把两个后续扩展整理成可执行文档和可复制提示词：
+
+```text
+用户输入简称
+  -> LLM Query Planner 先判断真正目标论文
+  -> 生成 canonical title / search query
+  -> 再查 arXiv
+```
+
+```text
+PaperForge job artifacts
+  -> notes/ai-paper-reader-prompt.md
+  -> 另一个 Codex 对话读取 ai-paper-reader SKILL.md
+  -> 生成专业阅读笔记
+```
+
+### 为什么这样做
+
+当前 intake 直接搜索标题，遇到 `unet` 这类简称时容易拿到 U-Net 变体，而不是原始论文 `U-Net: Convolutional Networks for Biomedical Image Segmentation`。
+
+同时，`ai-paper-reader` 是 Codex skill，不是 PaperForge Python 包。第一版更稳的接入方式是生成 prompt pack，明确要求另一个 Codex 对话读取：
+
+```text
+C:/Users/Administrator/.codex/skills/neversight-skills_feed-ai-paper-reader/SKILL.md
+```
+
+### 已完成文件
+
+新增文档：
+
+- `docs/CHANGE_REQUEST_LLM_QUERY_AND_AI_READER.md`
+- `docs/PROMPT_IMPLEMENT_LLM_QUERY_AND_AI_READER.md`
+
+更新文档：
+
+- `README.md`
+- `docs/EXTENSION_ROADMAP.md`
+- `docs/PROGRESS.md`
+- `docs/DOCUMENTATION_GUIDE.md`
+- `docs/PROJECT_GUIDE.md`
+- `docs/STATUS_REVIEW.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/BUILD_STEPS.md`
+
+### 当前能力
+
+本阶段只完成文档和提示词，没有改 Python 运行时代码。
+
+文档已经明确：
+
+- Extension 0 排在段落级 evidence map 之前；
+- `unet` / `u-net` / `u net` 应稳定解析到原始 U-Net 论文；
+- 第一版 query planner 需要 fallback 和确定性别名表；
+- 第一版 `ai-paper-reader` 接入生成 `notes/ai-paper-reader-prompt.md`，不直接导入或调用本地 Codex skill。
+
+### 验证方式
+
+运行 diff 空白检查：
+
+```powershell
+git diff --check
+```
+
+这次是文档阶段，不需要运行 pytest。

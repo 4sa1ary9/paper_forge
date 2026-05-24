@@ -132,7 +132,8 @@ def _deep_note_plan_markdown(job: ResearchJob, checks: list[ReadinessInput]) -> 
         "5. Experiments",
         "6. Limitations",
         "7. Code Mapping after repository evidence is reviewed",
-        "8. Deep Q&A and Practical Takeaways after method and experiment notes exist",
+        "8. Deep Q&A after method, experiment, and limitation notes exist",
+        "9. Practical Takeaways after Deep Q&A evidence notes exist",
         "",
     ]
     return "\n".join(lines)
@@ -187,12 +188,16 @@ def _section_readiness(checks: list[ReadinessInput]) -> list[SectionReadiness]:
             "code references; clone still requires user confirmation",
         ),
         SectionReadiness("Experiments", _ready(has_evidence_map and has_manifest), "PDF text evidence map, image manifest"),
-        SectionReadiness("Deep Q&A", "blocked", "requires generated method and experiment notes first"),
+        SectionReadiness(
+            "Deep Q&A",
+            _ready(has_evidence_map and has_manifest),
+            "generated method, experiment, and limitation evidence notes",
+        ),
         SectionReadiness("Limitations", _ready(has_evidence_map), "PDF text evidence map"),
         SectionReadiness(
             "Practical Takeaways",
-            "blocked",
-            "requires generated method and experiment notes first",
+            _ready(has_evidence_map and has_manifest),
+            "generated method, experiment, limitation, and Deep Q&A evidence notes",
         ),
     ]
 

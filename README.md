@@ -13,12 +13,14 @@
 7. 记录 GitHub 代码仓库候选并生成 code references。
 8. 生成论文笔记骨架，保留证据入口但不伪造深度解释。
 9. 生成术语库骨架。
-10. 生成疑难点骨架。
+10. 生成疑难点骨架，并可从已有证据草稿派生疑难点候选。
 11. 生成面试项目映射骨架，保留项目判断入口但不自动下结论。
 12. 从 PDF 提取分页文本证据，生成 `notes/evidence-map.md`。
 13. 生成研究包状态检查报告，区分 required、recommended 和 optional 产物。
 14. 生成深度笔记准备计划，标记哪些章节有证据支撑、哪些暂不能自动生成。
-15. 写入保守版深度笔记 MVP，只填充 ready 的 TL;DR 和 Paper Overview，并保留页码证据和人工复查标记。
+15. 写入保守版深度笔记 MVP，只填充 ready 的 TL;DR、Paper Overview、Background and Motivation、Core Method、Experiments、Limitations、Deep Q&A、Practical Takeaways，并保留页码/图片证据和人工复查标记。
+16. 在用户提供本地代码目录后，生成文件级代码映射证据，不自动 clone 第三方仓库。
+17. 评估论文作为面试项目素材的适配度，输出 high / medium / low / not recommended、最小 demo 范围和风险边界。
 
 ## 为什么做这个项目
 
@@ -48,7 +50,7 @@ PaperForge Agent 要解决的是这个完整工作流，而不是单点问答。
 
 ## 当前可运行能力
 
-当前版本已经具备 intake + asset collection + source enrichment + PDF image extraction + code linking + note scaffold + terminology scaffold + doubts scaffold + interview mapping scaffold + package validation + PDF text evidence extraction + deep note planning + conservative deep note writing MVP 的最小闭环：
+当前版本已经具备 intake + asset collection + source enrichment + PDF image extraction + code linking + note scaffold + terminology scaffold + doubts scaffold + interview mapping scaffold + package validation + PDF text evidence extraction + deep note planning + conservative deep note writing MVP + terminology evidence MVP + doubts evidence MVP + code mapping evidence MVP + interview project assessment MVP 的最小闭环：
 
 1. 输入论文标题、arXiv ID 或 URL。
 2. Agent 调用 arXiv API 解析论文元信息。
@@ -67,8 +69,14 @@ PaperForge Agent 要解决的是这个完整工作流，而不是单点问答。
 15. PDF Text Evidence Extractor Agent 生成 `notes/evidence-map.md`，保留页码级文本证据入口。
 16. Research Package Validator Agent 生成 `notes/package-status.md`，检查研究包文件状态。
 17. Deep Note Planner Agent 生成 `notes/deep-note-plan.md`，判断深度笔记章节准备度。
-18. Deep Note Writer Agent 更新 `notes/README.md` 中 ready 的 TL;DR 和 Paper Overview，写入带页码证据的保守草稿。
-19. Streamlit 页面展示论文摘要、任务状态、agent timeline 和 artifact 列表。
+18. Deep Note Writer Agent 更新 `notes/README.md` 中 ready 的 TL;DR、Paper Overview、Background and Motivation、Core Method、Experiments、Limitations、Deep Q&A、Practical Takeaways，写入带页码/图片证据的保守草稿。
+19. Terminology Agent 更新 `notes/terminology.md`，只写入有页码证据的术语候选和人工复查标记。
+20. Doubts Agent 更新 `notes/doubts.md`，从主笔记证据草稿和术语条目派生带来源页码的疑难点候选。
+21. Code Mapping Agent 在用户提供本地代码仓库路径后扫描代码文件，把 Core Method 证据词映射到候选代码路径，并更新 `notes/code-references.md`。
+22. Interview Mapper Agent 更新 `notes/interview-project.md`，基于主笔记、代码映射和疑难点输出保守适配度评估、最小 demo 范围和风险。
+23. Streamlit 页面展示论文摘要、任务状态、agent timeline 和 artifact 列表。
+
+当前接续点：核心 MVP 已完成。下一步建议先做 LLM Query Planner 与 ai-paper-reader Prompt Pack，解决简称找错论文和复用现有阅读笔记 skill 的问题；随后再做段落级 evidence map。详见 [扩展路线图](docs/EXTENSION_ROADMAP.md)。
 
 ## 项目结构
 
@@ -78,11 +86,11 @@ PaperForge-Agent/
 ├── paperforge/                    # Python 核心代码
 │   ├── arxiv_client.py             # arXiv 查询和解析
 │   ├── asset_collector.py           # PDF / TeX Source 下载和解压
-│   ├── code_linker.py               # GitHub 候选仓库整理
+│   ├── code_linker.py               # GitHub 候选仓库整理和本地代码映射证据
 │   ├── deep_note_planner.py          # 深度笔记准备度计划
 │   ├── deep_note_writer.py           # 保守版深度笔记 MVP
-│   ├── doubts_agent.py              # 疑难点骨架生成
-│   ├── interview_mapper.py           # 面试项目映射骨架生成
+│   ├── doubts_agent.py              # 疑难点骨架和证据草稿生成
+│   ├── interview_mapper.py           # 面试项目映射骨架和适配度评估
 │   ├── intake_agent.py             # 论文 intake agent workflow
 │   ├── models.py                   # ResearchJob / AgentStep / Artifact 数据结构
 │   ├── note_writer.py               # 论文笔记骨架生成
@@ -90,7 +98,7 @@ PaperForge-Agent/
 │   ├── pdf_image_extractor.py       # PDF 图片提取
 │   ├── pdf_text_extractor.py        # PDF 文本证据提取
 │   ├── source_enrichment.py         # 外部来源和本地资产状态整理
-│   ├── terminology_agent.py         # 术语库骨架生成
+│   ├── terminology_agent.py         # 术语库骨架和证据草稿生成
 │   ├── slug.py                     # 论文目录名生成
 │   ├── steps.py                    # timeline step 状态流转
 │   └── storage.py                  # 本地文件读写
@@ -131,6 +139,9 @@ uv run python -m pytest
 
 - [项目指南](docs/PROJECT_GUIDE.md)
 - [流程规范](docs/WORKFLOW_SPEC.md)
+- [扩展路线图](docs/EXTENSION_ROADMAP.md)
+- [LLM 查询规划与 ai-paper-reader 变更设计](docs/CHANGE_REQUEST_LLM_QUERY_AND_AI_READER.md)
+- [给另一个 Codex 对话的实现提示词](docs/PROMPT_IMPLEMENT_LLM_QUERY_AND_AI_READER.md)
 - [文档规范](docs/DOCUMENTATION_GUIDE.md)
 - [开发步骤记录](docs/BUILD_STEPS.md)
 - [项目进度](docs/PROGRESS.md)
@@ -141,4 +152,7 @@ uv run python -m pytest
 - `BUILD_STEPS.md`：阶段复盘，记录每一步为什么做、做了什么、如何验证。
 - `PROJECT_GUIDE.md`：项目定位和面试叙事。
 - `WORKFLOW_SPEC.md`：agent 流程和产物规范。
+- `EXTENSION_ROADMAP.md`：核心 MVP 之后的扩展方向和推荐顺序。
+- `CHANGE_REQUEST_LLM_QUERY_AND_AI_READER.md`：LLM 查询规划和 `ai-paper-reader` prompt pack 的变更设计。
+- `PROMPT_IMPLEMENT_LLM_QUERY_AND_AI_READER.md`：可复制给另一个 Codex 对话的实现提示词。
 - `DOCUMENTATION_GUIDE.md`：说明文档如何维护。

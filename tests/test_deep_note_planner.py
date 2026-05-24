@@ -40,7 +40,12 @@ def test_deep_note_planner_writes_ready_plan_from_existing_package(monkeypatch, 
     assert "| PDF text evidence map | `notes/evidence-map.md` | recommended | present |" in content
     assert "| TL;DR | ready | metadata, PDF text evidence map |" in content
     assert "| Core Method | ready | PDF text evidence map, image manifest |" in content
-    assert "| Deep Q&A | blocked | requires generated method and experiment notes first |" in content
+    assert "| Deep Q&A | ready | generated method, experiment, and limitation evidence notes |" in content
+    assert (
+        "| Practical Takeaways | ready | generated method, experiment, limitation, and Deep Q&A evidence notes |"
+        in content
+    )
+    assert "9. Practical Takeaways after Deep Q&A evidence notes exist" in content
     assert "No missing readiness inputs." in content
 
     step = updated.steps[-1]
@@ -80,6 +85,11 @@ def test_deep_note_planner_marks_partial_when_readiness_inputs_are_missing(monke
     assert "| TL;DR | blocked | metadata, PDF text evidence map |" in content
     assert "| Core Method | blocked | PDF text evidence map, image manifest |" in content
     assert "| Experiments | blocked | PDF text evidence map, image manifest |" in content
+    assert "| Deep Q&A | blocked | generated method, experiment, and limitation evidence notes |" in content
+    assert (
+        "| Practical Takeaways | blocked | generated method, experiment, limitation, and Deep Q&A evidence notes |"
+        in content
+    )
     assert "- Missing required readiness input: `notes/package-status.md`." in content
     assert "- Missing recommended readiness input: `raw/paper.pdf`." in content
     assert "- Missing recommended readiness input: `notes/evidence-map.md`." in content

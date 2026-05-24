@@ -54,25 +54,32 @@ PaperForge Agent 不能被包装成普通 ChatGPT 套壳。它的 agent 特征�
 
 ### 当前完成度
 
-当前代码已经完成 **单篇论文 scaffold MVP + PDF text evidence map + deep note readiness gate + conservative deep note writing MVP**：
+当前代码已经完成 **单篇论文 scaffold MVP + PDF text evidence map + deep note readiness gate + conservative deep note writing MVP + terminology evidence MVP + doubts evidence MVP + code mapping evidence MVP + interview project assessment MVP**：
 
-- 可以跑通 intake -> asset collection -> source enrichment -> PDF image extraction -> code linking -> note scaffold -> terminology scaffold -> doubts scaffold -> interview mapping scaffold -> package validation -> PDF text evidence extraction -> deep note planning -> conservative deep note writing；
+- 可以跑通 intake -> asset collection -> source enrichment -> PDF image extraction -> code linking -> note scaffold -> terminology scaffold -> doubts scaffold -> interview mapping scaffold -> package validation -> PDF text evidence extraction -> deep note planning -> conservative deep note writing -> terminology evidence writing -> doubts evidence writing；在用户提供本地代码目录时，可以继续写入 code mapping evidence；并能基于现有证据写入 interview project assessment；
 - 所有产物都能落盘；
 - agent timeline 和 artifacts 能记录每一步状态；
 - 真实 arXiv 样例已经验证。
 
 但项目还没有完成最终愿景：
 
-- `notes/README.md` 已能写入 TL;DR 和 Paper Overview 的保守证据草稿，但仍不是完整深度论文解释；
-- `notes/terminology.md` 仍是术语模板，不是自动抽取和解释结果；
-- `notes/doubts.md` 仍是疑难点模板，不是真实阅读疑问；
-- `notes/interview-project.md` 仍是项目映射模板，不是适配度判断；
+- `notes/README.md` 已能写入 TL;DR、Paper Overview、Background and Motivation、Core Method、Experiments、Limitations、Deep Q&A、Practical Takeaways 的保守证据草稿，但仍不是完整深度论文解释；
+- `notes/terminology.md` 已能写入有页码证据的术语候选，但仍不是完整术语解释结果；
+- `notes/doubts.md` 已能写入由证据草稿派生的疑难点候选，但仍不是真实完整疑难点分析；
+- `notes/code-references.md` 已能写入本地代码目录扫描得到的文件级映射候选，但仍不是行级或语义级实现映射；
+- `notes/interview-project.md` 已能写入 high / medium / low / not recommended 适配度评估和最小 demo 边界，但仍不是完整项目方案；
 - `notes/package-status.md` 只检查文件是否存在，不评估内容质量。
 - `notes/evidence-map.md` 只提供页码级文本证据，不生成解释。
 - `notes/deep-note-plan.md` 只判断章节准备度。
 - Deep Note Writer MVP 内容必须保留人工复查标记，不应包装成最终深度结论。
 
 所以当前版本适合展示 agent workflow、状态管理、产物规范和失败容错；还不适合宣称已经自动完成深度论文研究。
+
+### 核心路线图状态
+
+当前核心 MVP 建议阶段已经完成。扩展方向已经整理到 `docs/EXTENSION_ROADMAP.md`。根据最新需求，下一步优先建议先做 LLM Query Planner 与 ai-paper-reader Prompt Pack，再做段落级 evidence map。
+
+LLM Query Planner、ai-paper-reader Prompt Pack、段落级 evidence map、RAG、多篇论文批处理、workflow 可视化增强和 FastAPI / React 产品化属于扩展路线图，不计入当前核心 MVP。
 
 ### MVP 范围内
 
@@ -174,6 +181,8 @@ PaperForge-Agent/
         │   ├── README.md
         │   ├── terminology.md
         │   ├── doubts.md
+        │   ├── evidence-map.md
+        │   ├── deep-note-plan.md
         │   ├── code-references.md
         │   ├── interview-project.md
         │   └── package-status.md
@@ -189,10 +198,10 @@ code-vault/
 - `paperforge/` 是核心 agent 代码。
 - `paperforge/intake_agent.py` 是当前最重要的 agent workflow。
 - `paperforge/asset_collector.py` 负责下载 PDF 和 TeX Source，并尝试解压源码。
-- `paperforge/code_linker.py` 负责整理 GitHub 候选仓库并生成代码引用说明。
+- `paperforge/code_linker.py` 负责整理 GitHub 候选仓库，并在用户提供本地代码目录后生成文件级代码映射证据。
 - `paperforge/deep_note_writer.py` 负责把 ready 章节的保守证据草稿写入主笔记。
-- `paperforge/doubts_agent.py` 负责生成疑难点骨架。
-- `paperforge/interview_mapper.py` 负责生成面试项目映射骨架。
+- `paperforge/doubts_agent.py` 负责生成疑难点骨架和证据候选草稿。
+- `paperforge/interview_mapper.py` 负责生成面试项目映射骨架和保守适配度评估。
 - `paperforge/note_writer.py` 负责生成 `notes/README.md` 的结构化笔记骨架。
 - `paperforge/package_validator.py` 负责生成研究包状态检查报告。
 - `paperforge/pdf_image_extractor.py` 负责从 PDF 提取图片和生成图片 manifest。
@@ -304,7 +313,13 @@ code-vault/
 
 负责生成主论文笔记。
 
-笔记风格参考现有 `ai-paper-reader` 规范，重点包括：
+笔记风格参考现有 `ai-paper-reader` 规范。当前明确的 skill 文件路径是：
+
+```text
+C:/Users/Administrator/.codex/skills/neversight-skills_feed-ai-paper-reader/SKILL.md
+```
+
+重点包括：
 
 - 元信息；
 - TL;DR；
@@ -374,11 +389,12 @@ code-vault/
 
 当前 MVP 输出内容：
 
-- 只处理 TL;DR 和 Paper Overview；
+- 只处理 TL;DR、Paper Overview、Background and Motivation、Core Method、Experiments、Limitations、Deep Q&A、Practical Takeaways；
 - 引用 `notes/evidence-map.md` 中的页码证据；
+- Core Method 和 Experiments 额外引用 `images/manifest.md` 中的 figure/table evidence；
 - 将主笔记 Draft status 更新为 conservative deep note MVP；
 - 明确标注 needs human review；
-- 不生成 Core Method、Experiments、Deep Q&A 或 Practical Takeaways；
+- 不生成完整实验解读、项目建议或项目适配度判断；
 - 不把 evidence excerpt 包装成最终深度结论。
 
 ### PDF Text Evidence Extractor Agent
@@ -414,17 +430,17 @@ code-vault/
 - `models.py`：定义数据结构。
 - `arxiv_client.py`：负责论文搜索和元信息解析。
 - `asset_collector.py`：负责下载 PDF、TeX Source，并尝试解压源码。
-- `code_linker.py`：负责从 metadata 和 external sources 整理 GitHub 候选仓库。
+- `code_linker.py`：负责从 metadata 和 external sources 整理 GitHub 候选仓库，并在用户提供本地代码目录后生成文件级代码映射证据。
 - `deep_note_planner.py`：负责生成深度笔记准备度计划，不做深度解释。
 - `deep_note_writer.py`：负责把 ready 章节的保守证据草稿写入 `notes/README.md`，不生成完整深度报告。
-- `doubts_agent.py`：负责生成 `notes/doubts.md` 的结构化模板。
-- `interview_mapper.py`：负责生成 `notes/interview-project.md` 的结构化模板。
+- `doubts_agent.py`：负责生成 `notes/doubts.md` 的结构化模板和疑难点证据草稿。
+- `interview_mapper.py`：负责生成 `notes/interview-project.md` 的结构化模板和面试项目适配度评估。
 - `intake_agent.py`：负责 intake 工作流。
 - `note_writer.py`：负责生成主论文笔记骨架，不做未经验证的深度解释。
 - `pdf_image_extractor.py`：负责从 `raw/paper.pdf` 提取图片并生成 `images/manifest.md`。
 - `pdf_text_extractor.py`：负责从 `raw/paper.pdf` 提取分页文本并生成 `notes/evidence-map.md`。
 - `source_enrichment.py`：负责整理外部资料 URL、本地 PDF/TeX 状态和来源可靠性标签。
-- `terminology_agent.py`：负责生成 `notes/terminology.md` 的结构化模板。
+- `terminology_agent.py`：负责生成 `notes/terminology.md` 的结构化模板和术语证据草稿。
 - `storage.py`：负责保存和读取本地文件。
 - `steps.py`：负责 timeline 状态流转。
 
@@ -470,7 +486,7 @@ code-vault/
 
 当前版本的诚实边界：
 
-> 当前版本已经跑通 scaffold 研究包闭环、PDF 文本证据提取、深度笔记准备度计划和保守版 TL;DR / Paper Overview 写入，但完整深度论文内容生成和项目适配度判断还没有实现。这个边界是有意保留的，因为系统先要保证输入资产、状态流转、产物落盘、质量门槛和证据准备度可靠。
+> 当前版本已经跑通 scaffold 研究包闭环、PDF 文本证据提取、深度笔记准备度计划、保守版 TL;DR / Paper Overview / Background and Motivation / Core Method / Experiments / Limitations / Deep Q&A / Practical Takeaways 写入、术语证据草稿写入、疑难点证据草稿写入、文件级代码映射候选，以及面试项目适配度评估；但完整深度论文内容生成、行级代码方法映射和完整项目方案还没有实现。这个边界是有意保留的，因为系统先要保证输入资产、状态流转、产物落盘、质量门槛和证据准备度可靠。
 
 ## 15. 开发原则
 

@@ -3,10 +3,12 @@ Run a real arXiv paper through the full pipeline:
   intake -> asset collection -> source enrichment -> PDF image extraction
   -> code linking -> note scaffold -> terminology scaffold -> doubts scaffold
   -> interview mapping scaffold -> PDF text evidence -> package validation
-  -> deep note planning -> deep note writing
+  -> deep note planning -> deep note writing -> terminology evidence
+  -> doubts evidence -> optional code mapping evidence -> interview assessment
 
 Usage: uv run python scripts/run_pipeline.py [arxiv_id_or_url] [external_source_url ...]
 Default: 2006.11239 (DDPM paper)
+Optional: set PAPERFORGE_CODE_REPO to a local repository path for code mapping.
 """
 
 import sys
@@ -19,11 +21,11 @@ from paperforge.intake_agent import run_paper_intake
 from paperforge.asset_collector import run_asset_collection
 from paperforge.source_enrichment import run_source_enrichment
 from paperforge.pdf_image_extractor import run_pdf_image_extraction
-from paperforge.code_linker import run_code_linking
+from paperforge.code_linker import run_code_linking, run_code_mapping_evidence
 from paperforge.note_writer import run_note_writing
-from paperforge.terminology_agent import run_terminology_scaffold
-from paperforge.doubts_agent import run_doubts_scaffold
-from paperforge.interview_mapper import run_interview_mapping_scaffold
+from paperforge.terminology_agent import run_terminology_evidence, run_terminology_scaffold
+from paperforge.doubts_agent import run_doubts_evidence, run_doubts_scaffold
+from paperforge.interview_mapper import run_interview_mapping_assessment, run_interview_mapping_scaffold
 from paperforge.package_validator import run_package_validation
 from paperforge.pdf_text_extractor import run_pdf_text_extraction
 from paperforge.deep_note_planner import run_deep_note_planning
@@ -32,6 +34,7 @@ from paperforge.deep_note_writer import run_deep_note_writing
 DEFAULT_INPUT = "https://arxiv.org/abs/2006.11239"
 INPUT_TEXT = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_INPUT
 EXTERNAL_SOURCE_URLS = sys.argv[2:] if len(sys.argv) > 2 else []
+CODE_REPO_PATH = os.getenv("PAPERFORGE_CODE_REPO")
 
 STAGE_SEP = "\n" + "=" * 64
 
@@ -167,6 +170,41 @@ for s in job.steps:
 print(f"{STAGE_SEP}\n  STAGE 13 — DEEP NOTE WRITING MVP\n{STAGE_SEP}")
 
 job = run_deep_note_writing(job)
+print(f"\n  Status: {job.status}")
+for s in job.steps:
+    print(f"    [{s.state:16s}] {s.name}  {s.error or ''}")
+
+# ── Stage 14: Terminology Evidence ───────────────────────────────────
+print(f"{STAGE_SEP}\n  STAGE 14 — TERMINOLOGY EVIDENCE MVP\n{STAGE_SEP}")
+
+job = run_terminology_evidence(job)
+print(f"\n  Status: {job.status}")
+for s in job.steps:
+    print(f"    [{s.state:16s}] {s.name}  {s.error or ''}")
+
+# ── Stage 15: Doubts Evidence ────────────────────────────────────────
+print(f"{STAGE_SEP}\n  STAGE 15 — DOUBTS EVIDENCE MVP\n{STAGE_SEP}")
+
+job = run_doubts_evidence(job)
+print(f"\n  Status: {job.status}")
+for s in job.steps:
+    print(f"    [{s.state:16s}] {s.name}  {s.error or ''}")
+
+# ── Stage 16: Code Mapping Evidence ──────────────────────────────────
+print(f"{STAGE_SEP}\n  STAGE 16 — CODE MAPPING EVIDENCE MVP\n{STAGE_SEP}")
+
+if CODE_REPO_PATH:
+    job = run_code_mapping_evidence(job, CODE_REPO_PATH)
+    print(f"\n  Status: {job.status}")
+    for s in job.steps:
+        print(f"    [{s.state:16s}] {s.name}  {s.error or ''}")
+else:
+    print("\n  Skipped: set PAPERFORGE_CODE_REPO to a local repository path to enable this stage.")
+
+# ── Stage 17: Interview Project Assessment ───────────────────────────
+print(f"{STAGE_SEP}\n  STAGE 17 — INTERVIEW PROJECT ASSESSMENT MVP\n{STAGE_SEP}")
+
+job = run_interview_mapping_assessment(job)
 print(f"\n  Status: {job.status}")
 for s in job.steps:
     print(f"    [{s.state:16s}] {s.name}  {s.error or ''}")

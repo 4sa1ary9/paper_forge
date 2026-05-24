@@ -1,4 +1,4 @@
-from paperforge.code_linker import run_code_linking
+from paperforge.code_linker import run_code_linking, run_code_mapping_evidence
 from paperforge.models import Artifact, PaperMetadata, ResearchJob
 
 
@@ -59,6 +59,88 @@ def test_code_linker_marks_partial_when_no_github_candidates(monkeypatch, tmp_pa
     assert step.state == "partial"
     assert step.error == "No GitHub repository candidates were found"
     assert updated.status == "partial"
+
+
+def test_code_mapping_evidence_maps_method_terms_to_local_code(monkeypatch, tmp_path):
+    monkeypatch.setenv("PAPERFORGE_DATA_DIR", str(tmp_path))
+    notes_dir = tmp_path / "paper-vault" / "sample-paper" / "notes"
+    notes_dir.mkdir(parents=True)
+    (notes_dir / "README.md").write_text(
+        "\n".join(
+            [
+                "# Sample Paper",
+                "",
+                "## Core Method",
+                "",
+                "- Page 2 method evidence: The encoder uses multi-head attention and positional encoding.",
+                "",
+                "## Experiments",
+                "",
+                "- Not generated yet.",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (notes_dir / "code-references.md").write_text(
+        "\n".join(
+            [
+                "# Code References",
+                "",
+                "- Paper: Sample Paper",
+                "- Clone decision: not cloned",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    code_repo = tmp_path / "local-code"
+    model_dir = code_repo / "models"
+    model_dir.mkdir(parents=True)
+    (model_dir / "attention.py").write_text(
+        "class MultiHeadAttention:\n    def forward(self, encoder, positional_encoding):\n        return encoder\n",
+        encoding="utf-8",
+    )
+    (code_repo / "README.md").write_text("Sample local repository.", encoding="utf-8")
+
+    updated = run_code_mapping_evidence(_job(), code_repo)
+
+    content = (notes_dir / "code-references.md").read_text(encoding="utf-8")
+    assert "## Code Mapping Evidence" in content
+    assert "- Mapping status: evidence-backed local scan" in content
+    assert "`models/attention.py`" in content
+    assert "attention" in content
+    assert "encoder" in content
+    assert "- Clone decision: not cloned by PaperForge; local path supplied by user." in content
+
+    step = updated.steps[-1]
+    assert step.id == "code.map_evidence"
+    assert step.state == "completed"
+    assert step.inputs == [
+        "notes/code-references.md",
+        "notes/README.md",
+        "user-provided local code repository",
+    ]
+    assert step.outputs == ["paper-vault/sample-paper/notes/code-references.md"]
+
+
+def test_code_mapping_evidence_requires_user_provided_local_repo(monkeypatch, tmp_path):
+    monkeypatch.setenv("PAPERFORGE_DATA_DIR", str(tmp_path))
+    notes_dir = tmp_path / "paper-vault" / "sample-paper" / "notes"
+    notes_dir.mkdir(parents=True)
+    (notes_dir / "README.md").write_text("# Sample Paper\n\n## Core Method\n\n- Page 1 method evidence: attention.\n", encoding="utf-8")
+    (notes_dir / "code-references.md").write_text("# Code References\n", encoding="utf-8")
+
+    updated = run_code_mapping_evidence(_job(), None)
+
+    step = updated.steps[-1]
+    assert step.id == "code.map_evidence"
+    assert step.state == "needs_user_input"
+    assert step.error == "No local code repository path was provided; automatic clone is disabled"
+    assert updated.status == "needs_user_input"
+
+    content = (notes_dir / "code-references.md").read_text(encoding="utf-8")
+    assert "## Code Mapping Evidence" in content
+    assert "- Mapping status: needs user input" in content
+    assert "- Required input: provide a local code repository path or confirm a clone/read strategy." in content
 
 
 def _job(github_candidates: list[str] | None = None) -> ResearchJob:

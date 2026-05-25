@@ -2,19 +2,23 @@
 
 ## 当前状态
 
-截至 Step 23，PaperForge Agent 的核心 MVP 已闭环：
+截至 Step 27，PaperForge Agent 的核心 MVP、Extension 0、Extension 1 和本地检索 MVP 已闭环：
 
 ```text
-intake
+query planning
+  -> intake
   -> asset collection
   -> source enrichment
   -> image extraction
   -> code candidate linking
   -> note / terminology / doubts / interview scaffolds
   -> PDF text evidence map
+  -> paragraph / chunk evidence map
+  -> local evidence search
   -> package validation
   -> deep note readiness
   -> conservative deep note writing
+  -> ai-paper-reader prompt pack
   -> terminology evidence
   -> doubts evidence
   -> code mapping evidence
@@ -34,6 +38,8 @@ intake
 ## 推荐顺序
 
 ### Extension 0: LLM Query Planner 与 ai-paper-reader Prompt Pack
+
+状态：已完成。
 
 目标：
 
@@ -70,6 +76,8 @@ intake
 
 ### Extension 1: 段落级 Evidence Map
 
+状态：已完成。
+
 目标：
 
 - 把当前页码级 `notes/evidence-map.md` 细化为 paragraph / chunk 级证据。
@@ -82,8 +90,8 @@ intake
 
 输出：
 
-- `notes/evidence-chunks.md` 或增强版 `notes/evidence-map.md`
-- 每个 chunk 至少包含 page、chunk id、section guess、text excerpt 和 source boundary。
+- `notes/evidence-chunks.md`
+- 每个 chunk 包含 chunk id、page、section guess、character count 和 text excerpt。
 
 边界：
 
@@ -92,10 +100,40 @@ intake
 
 验证：
 
-- 单元测试覆盖 chunk 切分、空页处理、页码保留和重复内容过滤。
-- 真实论文样例能生成稳定 chunk 文件。
+- 单元测试覆盖 Page 1 / Page 2 解析、空行和长度切分、稳定 chunk id、section guess、缺失 evidence-map partial report、timeline/artifact 和 job 保存。
 
-### Extension 2: Evidence-Grounded Deep Explanation
+### Extension 2: RAG / 本地检索 MVP
+
+状态：已完成。
+
+目标：
+
+- 基于 `notes/evidence-chunks.md` 做本地关键词检索。
+- 支持“在论文证据内查找答案”，而不是泛泛问答。
+
+输入：
+
+- 用户查询。
+- `notes/evidence-chunks.md`
+
+输出：
+
+- `notes/evidence-search.md`
+- 检索结果返回 chunk id、page、score 和 excerpt。
+
+边界：
+
+- 第一版使用确定性关键词匹配或 BM25-like 简单评分。
+- 不做向量数据库，不引入复杂依赖。
+- 不把检索结果直接包装成最终答案。
+
+验证：
+
+- 测试 method 和 experiment chunk 命中、缺失 chunks 文件的 partial / needs_user_input、输出 Markdown、timeline 和 artifact 更新。
+
+### Extension 3: Evidence-Grounded Deep Explanation
+
+状态：未开始。下一步先做 Step 28，让 ai-paper-reader note generation 优先使用 evidence chunks。
 
 目标：
 
@@ -125,12 +163,12 @@ intake
 - 测试章节替换、证据引用格式和缺失输入 partial 状态。
 - 真实样例检查生成内容是否引用具体 page/chunk。
 
-### Extension 3: RAG / 向量检索
+### Extension 4: 语义 / 向量检索扩展
 
 目标：
 
-- 基于 evidence chunks 建立本地检索能力。
-- 支持“在论文证据内查找答案”，而不是泛泛问答。
+- 在本地关键词检索 MVP 稳定后，再考虑 embedding 或向量检索。
+- 保持所有结果都能追溯到 chunk id、page 和 excerpt。
 
 输入：
 
@@ -139,12 +177,12 @@ intake
 
 输出：
 
-- 本地索引文件，建议放在 `.paperforge-data/`。
-- 检索结果必须返回 chunk id、page 和 excerpt。
+- 本地索引文件，放在 `.paperforge-data/`。
+- 检索结果返回 chunk id、page、score 和 excerpt。
 
 边界：
 
-- 第一版只做本地单篇论文检索。
+- 只在关键词检索 MVP 不够用时再做。
 - 不做多论文知识库。
 - 不把检索结果直接包装成最终答案。
 
@@ -153,7 +191,7 @@ intake
 - 测试索引构建、查询返回、空索引处理和 source reference。
 - 真实样例能根据关键词返回相关 chunk。
 
-### Extension 4: Workflow 可视化增强
+### Extension 5: Workflow 可视化增强
 
 目标：
 
@@ -182,7 +220,7 @@ intake
 - 运行 Streamlit，检查已有 job 能正常展示。
 - 如果改 UI 逻辑，补轻量函数测试或手动验证记录。
 
-### Extension 5: 多篇论文批处理
+### Extension 6: 多篇论文批处理
 
 目标：
 
@@ -209,7 +247,7 @@ intake
 
 - 测试多输入解析、单篇失败不阻塞后续、summary 生成。
 
-### Extension 6: Advanced Code Analysis
+### Extension 7: Advanced Code Analysis
 
 目标：
 
@@ -236,7 +274,7 @@ intake
 
 - 测试文件扫描、函数识别、路径过滤、缺失仓库处理。
 
-### Extension 7: Productization
+### Extension 8: Productization
 
 目标：
 
@@ -257,14 +295,13 @@ intake
 
 ## 当前最推荐的下一步
 
-优先做 **Extension 0: LLM Query Planner 与 ai-paper-reader Prompt Pack**。
+优先做 **Step 28: ai-paper-reader Note 使用 Evidence Chunks**。
 
 原因：
 
-- 它先修正入口质量，避免用户输入简称时拿到错误论文。
-- 它把现有 `ai-paper-reader` skill 变成可复用的工作流产物。
-- 第一版可以保持轻量：query planner 有 fallback，skill 接入先生成 prompt pack。
-- 完成后再做 Extension 1 段落级 evidence map，用更细证据提高生成质量。
+- Step 27 已验证 chunks 能被本地检索命中。
+- ai-paper-reader note generation 仍主要使用页码级 evidence map，需要优先改成读取 `notes/evidence-chunks.md`。
+- 这一步能直接降低 LLM 只引用粗页码 excerpt 的问题，同时保持 API key 管理和 prompt 截断策略不变。
 
 ## 暂不建议直接做
 

@@ -2,17 +2,17 @@
 
 ## 当前阶段
 
-**阶段：Step 23，Interview Project Mapping Assessment MVP 已完成。**
+**阶段：Step 27，RAG / 本地检索 MVP 已完成。**
 
-最近文档刷新：2026-05-24。Step 23 已完成核心 MVP 闭环；扩展路线已整理到 `docs/EXTENSION_ROADMAP.md`。根据最新需求，下一步优先建议做 LLM Query Planner 与 ai-paper-reader Prompt Pack，然后再做段落级 evidence map。
+最近文档刷新：2026-05-25。Step 23 已完成核心 MVP 闭环；Step 24 已完成 Extension 0；Step 25 已完成 OpenAI-compatible LLM 执行层和 ai-paper-reader 自动笔记生成；Step 26 已完成 paragraph / chunk 级 evidence map；Step 27 已完成基于 evidence chunks 的本地关键词检索 MVP。下一步优先建议让 ai-paper-reader note generation 使用 evidence chunks。
 
 当前项目已经从 TypeScript/React/Express 调整为 **Python + Streamlit**。
 
 ## 完成度结论
 
-当前项目已经完成 **Step 23 scaffold MVP + conservative deep note writing MVP + terminology evidence MVP + doubts evidence MVP + code mapping evidence MVP + interview project assessment MVP**，但还没有完成文档中描述的最终研究包目标。
+当前项目已经完成 **Step 27 LLM provider config + query planning + scaffold MVP + conservative deep note writing MVP + ai-paper-reader prompt pack + ai-paper-reader note generation + paragraph / chunk evidence map + local evidence search MVP + terminology evidence MVP + doubts evidence MVP + code mapping evidence MVP + interview project assessment MVP**，但还没有完成文档中描述的最终研究包目标。
 
-- 已完成：单篇论文从 intake 到 PDF text evidence extraction + deep note planning + conservative deep note writing + terminology evidence writing + doubts evidence writing + code mapping evidence writing + interview project assessment 的确定性 workflow，包含 metadata、PDF/TeX 资产、外部来源记录、图片 manifest、代码候选、笔记/术语/疑难点/面试项目模板、研究包状态报告、PDF 文本证据图、深度笔记准备计划，以及带页码/图片证据的 TL;DR、Paper Overview、Background and Motivation、Core Method、Experiments、Limitations、Deep Q&A、Practical Takeaways 保守草稿、术语候选条目、疑难点证据草稿、文件级代码映射候选和面试项目适配度评估。
+- 已完成：单篇论文从 LLM query planning + intake 到 PDF text evidence extraction + paragraph / chunk evidence extraction + local evidence search + deep note planning + conservative deep note writing + ai-paper-reader prompt pack + ai-paper-reader note generation + terminology evidence writing + doubts evidence writing + code mapping evidence writing + interview project assessment 的 workflow，包含 query plan、metadata、PDF/TeX 资产、外部来源记录、图片 manifest、代码候选、笔记/术语/疑难点/面试项目模板、研究包状态报告、PDF 文本证据图、paragraph / chunk 级证据文件、本地 evidence search 结果、深度笔记准备计划，以及带页码/图片证据的 TL;DR、Paper Overview、Background and Motivation、Core Method、Experiments、Limitations、Deep Q&A、Practical Takeaways 保守草稿、ai-paper-reader handoff prompt、LLM 生成的 ai-paper-reader note、术语候选条目、疑难点证据草稿、文件级代码映射候选和面试项目适配度评估。
 - 未完成：完整深度论文笔记生成、术语自动解释、完整疑难点分析、行级或语义级代码映射、完整项目方案生成、RAG、自动 clone、多篇论文批处理。
 - 详细核对见：`docs/STATUS_REVIEW.md`。
 
@@ -187,6 +187,26 @@ uv run python -m pytest
   - 缺少 PDF 时仍写 partial report，保留 timeline 和 artifact；
   - 将 `pdf.extract_text_evidence` 写入 timeline 和 artifacts。
 - Streamlit 工作台已增加 `Extract PDF Text Evidence` 按钮。
+- 已实现 Evidence Chunker Agent：
+  - 新增 `paperforge/evidence_chunker.py`；
+  - 第一版读取 `notes/evidence-map.md` 的 Page excerpt，不重新解析 PDF；
+  - 生成 `notes/evidence-chunks.md`；
+  - 按空行和合理长度切分 paragraph / chunk；
+  - 每个 chunk 写入 stable chunk id、page、section guess、字符数和文本 excerpt；
+  - section guess 覆盖 introduction、method、experiment 和 limitation 基础关键词；
+  - 缺少 evidence-map 或空页时写 partial report，不阻塞 job；
+  - 将 `pdf.extract_evidence_chunks` 写入 timeline，artifact label 为 `Evidence chunks`。
+- Streamlit 工作台已增加 `Extract Evidence Chunks` 按钮。
+- 已实现 Evidence Retriever Agent：
+  - 新增 `paperforge/evidence_retriever.py`；
+  - 读取用户查询和 `notes/evidence-chunks.md`；
+  - 第一版使用确定性关键词匹配 / BM25-like 简单评分，不引入向量数据库；
+  - 返回 chunk id、page、section guess、score 和 excerpt；
+  - 生成 `notes/evidence-search.md`；
+  - 缺少 chunks 文件时写 partial report，不阻塞 job；
+  - 空查询时返回 `needs_user_input`；
+  - 将 `evidence.search_chunks` 写入 timeline，artifact label 为 `Evidence search results`。
+- Streamlit 工作台已增加 `Evidence search query` 输入框和 `Search Evidence Chunks` 按钮。
 - 已实现 Deep Note Planner / Readiness Gate：
   - 生成 `notes/deep-note-plan.md`；
   - 读取 `notes/package-status.md`、`notes/README.md`、PDF、`notes/evidence-map.md`、图片 manifest、外部来源记录和代码引用文件的存在状态；
@@ -212,6 +232,44 @@ uv run python -m pytest
   - Practical Takeaways 从已写入的 Core Method、Experiments、Limitations、Deep Q&A 证据草稿派生学习型 takeaway，保留来源章节和页码，不生成项目建议；
   - 将 `note.write_deep_note_mvp` 写入 timeline 和 artifacts。
 - Streamlit 工作台已增加 `Write Deep Note MVP` 按钮。
+- 已实现 LLM Query Planner：
+  - 新增 `paperforge/query_planner.py`；
+  - 在 arXiv 查询前生成 canonical title / search query；
+  - `unet`、`u-net`、`u net` 稳定解析到原始 U-Net 论文；
+  - 记录 author hint `Ronneberger` 和 year hint `2015`；
+  - arXiv ID、arXiv URL 和 PDF URL 不交给 LLM 改写；
+  - fake LLM 合法 JSON 可生效，坏 JSON、空响应或异常 fallback；
+  - 写入 `notes/query-plan.md`；
+  - 将 `query.plan_paper_identity` 写入 timeline。
+- Streamlit intake 区域已增加 `Use LLM query planner` 复选框。
+- 已实现 ai-paper-reader Prompt Pack：
+  - 新增 `paperforge/ai_paper_reader_prompt.py`；
+  - 生成 `notes/ai-paper-reader-prompt.md`；
+  - Prompt 明确要求另一个 Codex 对话读取 `./docs/PAPER_SKILL.md`；
+  - Prompt 同时记录 canonical skill 路径 `C:/Users/Administrator/.codex/skills/neversight-skills_feed-ai-paper-reader/SKILL.md`；
+  - Prompt 写入论文工作区、`metadata.json`、`raw/paper.pdf`、`notes/README.md`、`notes/evidence-map.md`、`images/manifest.md`；
+  - 缺少 PDF、evidence map 或 image manifest 时仍生成 prompt，并标注 missing；
+  - 将 `note.prepare_ai_paper_reader_prompt` 写入 timeline；
+  - 将 artifact label 设为 `AI Paper Reader Prompt`。
+- Streamlit 工作台已增加 `Prepare ai-paper-reader Prompt` 按钮。
+- 已实现 OpenAI-compatible LLM client：
+  - 新增 `paperforge/llm_client.py`；
+  - 自动读取项目根目录 `.env`；
+  - 从 `.env` 或系统环境变量读取 `PAPERFORGE_LLM_BASE_URL`、`PAPERFORGE_LLM_API_KEY`、`PAPERFORGE_QUERY_MODEL`、`PAPERFORGE_READER_MODEL`；
+  - query planner 默认使用 `PAPERFORGE_QUERY_MODEL`，当前建议为 `deepseek-v4-flash`；
+  - ai-paper-reader note generation 使用 `PAPERFORGE_READER_MODEL`，当前建议为 `deepseek-v4-pro`；
+  - `LlmConfig.__repr__` 会隐藏 API key；
+  - 不把 API key 写入 job、notes 或 docs。
+- 已实现 ai-paper-reader Note Generation：
+  - 新增 `paperforge/ai_paper_reader_note.py`；
+  - 读取 `docs/PAPER_SKILL.md`、`metadata.json`、`notes/README.md`、`notes/evidence-map.md` 和 `images/manifest.md`；
+  - 生成 `notes/ai-paper-reader-note.md`；
+  - 保存 `notes/ai-paper-reader-generation-prompt.md` 方便复盘；
+  - 缺少 LLM 配置时将 step 标记为 `needs_user_input`；
+  - 缺少 PDF、evidence map 或 image manifest 时仍可调用 LLM，但 step 标记为 `partial`；
+  - 将 `note.generate_ai_paper_reader_note` 写入 timeline；
+  - artifact labels 为 `AI Paper Reader Note` 和 `AI Paper Reader Generation Prompt`。
+- Streamlit 工作台已增加 `Generate ai-paper-reader Note` 按钮。
 
 ## 当前验证状态
 
@@ -221,7 +279,7 @@ Python 版本已验证通过：
 - 已创建 `.venv` 虚拟环境；
 - 激活提示名为 `agent`；
 - 已生成 `uv.lock`；
-- 执行 `uv run python -m pytest` 通过：48 passed；
+- 执行 `uv run python -m pytest` 通过：81 passed；
 - 执行 `uv run python -m compileall app.py paperforge tests scripts` 通过；
 - 执行 `git diff --check` 通过；
 - 真实 intake + asset collection + source enrichment 通过：
@@ -324,21 +382,9 @@ Python 版本已验证通过：
 
 ## 下一步
 
-Step 23 已跑通。当前核心 MVP 已闭环。扩展路线图已单独整理到 `docs/EXTENSION_ROADMAP.md`。最新需求已经拆成独立变更设计和实现提示词：
+Step 27 已跑通。当前核心 MVP、Extension 0、LLM 执行层、段落级 evidence chunks 和本地 evidence search 已经完成。扩展路线图已单独整理到 `docs/EXTENSION_ROADMAP.md`。
 
-```text
-docs/EXTENSION_ROADMAP.md
-docs/CHANGE_REQUEST_LLM_QUERY_AND_AI_READER.md
-docs/PROMPT_IMPLEMENT_LLM_QUERY_AND_AI_READER.md
-```
-
-最推荐的下一步是 **Extension 0: LLM Query Planner 与 ai-paper-reader Prompt Pack**。原因是它先解决两个实际 workflow 断点：
-
-- 用户输入简称时容易找错论文，例如 `unet` 应优先解析到原始 U-Net 论文；
-- 现有 `ai-paper-reader` skill 需要被纳入 PaperForge 产物链，第一版用 `notes/ai-paper-reader-prompt.md` 让另一个 Codex 对话稳定读取并使用：
-  `C:/Users/Administrator/.codex/skills/neversight-skills_feed-ai-paper-reader/SKILL.md`
-
-完成 Extension 0 后，再做 **Extension 1: 段落级 Evidence Map**。它能把当前页码级证据细化到 paragraph / chunk 级，是后续 RAG、深度解释、术语解释和疑难点分析的基础。
+最推荐的下一步是 **Step 28: ai-paper-reader Note 使用 Evidence Chunks**。生成 prompt 时优先纳入 `notes/evidence-chunks.md` excerpt，缺失时再 fallback 到 `notes/evidence-map.md`。
 
 完整深度论文解释、远端仓库自动 clone、完整项目方案生成仍然不建议直接展开。
 
@@ -347,14 +393,17 @@ docs/PROMPT_IMPLEMENT_LLM_QUERY_AND_AI_READER.md
 ```text
 Step 22: Code Mapping Evidence MVP completed
 Step 23: Interview Project Mapping Assessment MVP completed
+Step 24: LLM Query Planner and ai-paper-reader Prompt Pack completed
+Step 25: LLM Provider Config and ai-paper-reader Note Generation completed
+Step 26: Paragraph / Chunk-level Evidence Map completed
+Step 27: RAG / Local Evidence Search MVP completed
 ```
 
 也就是说，当前核心 MVP 建议阶段已经完成。后续如果要读取远端或 clone 第三方仓库，需要再次确认。
 
 扩展路线图暂不计入核心 MVP，详见 `docs/EXTENSION_ROADMAP.md`：
 
-- LLM Query Planner 与 ai-paper-reader Prompt Pack；
-- 段落级 evidence map；
+- ai-paper-reader note generation 使用 evidence chunks；
 - RAG / 向量检索；
 - 多篇论文批处理；
 - workflow 可视化增强；

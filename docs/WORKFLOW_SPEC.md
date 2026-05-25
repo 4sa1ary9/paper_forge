@@ -6,12 +6,15 @@ PaperForge Agent 把一个论文输入转换成一个完整研究包。
 
 ```text
 论文输入
+  -> 查询规划
   -> 论文身份识别
   -> 原始资产收集
   -> 外部资料增强
   -> 代码关联分析
   -> 图表和文本提取
   -> PDF 文本证据提取
+  -> 段落级证据切分
+  -> 本地证据检索
   -> 深度笔记准备度计划
   -> 保守版深度笔记写入
   -> 术语和疑难点提取
@@ -24,20 +27,25 @@ PaperForge Agent 把一个论文输入转换成一个完整研究包。
 
 ## 1.1 当前实现边界
 
-截至 Step 23，当前 Python 版已经跑通的是 **scaffold research package + PDF text evidence map + deep note readiness gate + conservative deep note writing MVP + terminology evidence MVP + doubts evidence MVP + code mapping evidence MVP + interview project assessment MVP**，不是最终深度研究包。
+截至 Step 27，当前 Python 版已经跑通的是 **LLM provider config + query planning + scaffold research package + PDF text evidence map + paragraph / chunk evidence map + local evidence search MVP + deep note readiness gate + conservative deep note writing MVP + ai-paper-reader prompt pack + ai-paper-reader note generation + terminology evidence MVP + doubts evidence MVP + code mapping evidence MVP + interview project assessment MVP**，不是最终深度研究包。
 
 已经实现：
 
 - 论文身份识别；
+- LLM Query Planner：在 arXiv 查询前把简称或模糊输入规划成 canonical paper title / search query，并生成 `notes/query-plan.md`；配置 LLM 时默认使用 `PAPERFORGE_QUERY_MODEL`；
 - PDF 和 TeX Source 资产收集；
 - 外部来源记录；
 - PDF 图片提取和 manifest；
 - PDF 分页文本证据提取；
+- paragraph / chunk 级证据切分，生成 `notes/evidence-chunks.md`；
+- 本地 evidence chunk 关键词检索，生成 `notes/evidence-search.md`；
 - GitHub 候选 URL 整理；
 - 笔记、术语、疑难点和面试项目映射模板；
 - 研究包文件存在性验证；
 - 深度笔记准备度计划；
 - 保守版深度笔记 MVP，只写入 ready 的 TL;DR、Paper Overview、Background and Motivation、Core Method、Experiments、Limitations、Deep Q&A、Practical Takeaways，并保留页码/图片证据和人工复查标记。
+- ai-paper-reader Prompt Pack：生成 `notes/ai-paper-reader-prompt.md`，让另一个 Codex 对话读取 `./docs/PAPER_SKILL.md` 和 canonical skill 路径后继续写专业阅读笔记。
+- ai-paper-reader Note Generation：配置 LLM 后读取 `docs/PAPER_SKILL.md` 和当前 job artifacts，生成 `notes/ai-paper-reader-note.md` 并保存生成 prompt。
 - 术语证据 MVP，只从 README 页码证据行中抽取有 evidence-map 页码支撑的候选术语，保留 first seen page、来源章节和人工复查标记。
 - 疑难点证据 MVP，只从 README 证据草稿、Deep Q&A 已有问题和 terminology first-seen 条目派生疑难点候选，保留来源章节、page evidence 和人工复查标记。
 - 代码映射证据 MVP，在用户提供本地代码目录后，按 Core Method 方法词重合度生成文件级候选映射，不自动 clone。
@@ -45,9 +53,7 @@ PaperForge Agent 把一个论文输入转换成一个完整研究包。
 
 尚未实现：
 
-- LLM Query Planner：在 arXiv 查询前把简称或模糊标题规划成 canonical paper title；
-- ai-paper-reader Prompt Pack：基于 job artifacts 生成可复制给 Codex 的阅读笔记提示词；
-- 段落级 evidence map 和语义检索；
+- 语义检索和向量数据库；
 - 完整深度论文解释；
 - 自动术语抽取和解释；
 - 完整疑难点分析；
@@ -101,6 +107,17 @@ PaperForge Agent 把一个论文输入转换成一个完整研究包。
 - 如果多个论文标题相似，必须让用户确认。
 - slug 使用简短论文名或常见缩写，不直接使用超长标题。
 - 原始标题必须完整保存到 metadata。
+
+### 当前 Query Planner MVP
+
+当前 Python MVP 在 arXiv 查询前增加 `query.plan_paper_identity`：
+
+- 输出 `notes/query-plan.md`，记录 original input、canonical title、search query、author hint、year hint、rationale、confidence、used LLM 和 fallback 状态。
+- `unet`、`u-net`、`u net` 使用确定性别名表解析到原始论文 `U-Net: Convolutional Networks for Biomedical Image Segmentation`，并记录 author hint `Ronneberger` 和 year hint `2015`。
+- arXiv ID、arXiv URL 和 PDF URL 不交给 LLM 改写，直接保持原始输入。
+- 第一版提供 `QueryPlannerClient` 可注入接口；配置 `PAPERFORGE_LLM_BASE_URL`、`PAPERFORGE_LLM_API_KEY` 和 `PAPERFORGE_QUERY_MODEL` 后，默认使用 OpenAI-compatible LLM client。
+- fake LLM 或真实 LLM 返回合法 JSON 时使用其 canonical title / search query，坏 JSON、空响应或异常时 fallback 到原始输入或别名表。
+- Streamlit intake 区域提供 `Use LLM query planner` 复选框；未配置真实 client 时仍可使用别名表和 fallback。
 
 ## 3. 原始资产收集流程
 
@@ -344,6 +361,67 @@ notes/evidence-map.md
 - 如果 PDF 没有可抽取文本，应标记为 partial，后续可以考虑 OCR 或 TeX Source 解析；
 - 单页 excerpt 需要限制长度，避免一个 Markdown 文件过大。
 
+## 6.2 Paragraph / Chunk Evidence Map 流程
+
+### 输出
+
+```text
+notes/evidence-chunks.md
+```
+
+### 目标
+
+把 `notes/evidence-map.md` 中的页码级 excerpt 细化成 paragraph / chunk 级证据入口，为后续 RAG、深度解释、术语解释和疑难点分析提供更精确的来源。
+
+当前 Python MVP 先做 Evidence Chunker：
+
+- 第一版读取 `notes/evidence-map.md` 的 Page excerpt，不重新解析 `raw/paper.pdf`；
+- 按空行和合理长度切分文本；
+- 每个 chunk 至少写入 chunk id、page、section guess、character count 和 text excerpt；
+- chunk id 使用稳定格式，例如 `p001-c001`；
+- section guess 覆盖 introduction、method、experiment 和 limitation 基础关键词；
+- 缺少 `notes/evidence-map.md` 或存在空页时写 partial report，不阻塞 job；
+- 将 `pdf.extract_evidence_chunks` 写入 timeline；
+- 将 `notes/evidence-chunks.md` 写入 artifacts，artifact label 为 `Evidence chunks`。
+
+### 规则
+
+- evidence chunks 只保存证据切分结果，不生成论文解释或总结；
+- 下游 LLM 生成应优先引用 chunk id；如果 chunks 缺失，再 fallback 到 evidence map 的页码；
+- 无法从 chunk 验证的内容必须标注为待核查；
+- 第一版不做 embedding、不做向量数据库、不做跨论文检索。
+
+## 6.3 Evidence Chunk 本地检索流程
+
+### 输出
+
+```text
+notes/evidence-search.md
+```
+
+### 目标
+
+基于 `notes/evidence-chunks.md` 做本地关键词检索，让用户能先在论文证据内查找相关 chunk，而不是直接进入泛泛问答。
+
+当前 Python MVP 先做 Evidence Retriever：
+
+- 输入用户查询和 `notes/evidence-chunks.md`；
+- 解析 chunk id、page、section guess 和 excerpt；
+- 使用确定性关键词匹配 / BM25-like 简单评分；
+- 返回 chunk id、page、section guess、score 和 excerpt；
+- 生成 `notes/evidence-search.md`；
+- 缺少 `notes/evidence-chunks.md` 时写 partial report；
+- 空查询时将 step 标记为 `needs_user_input`；
+- 将 `evidence.search_chunks` 写入 timeline；
+- 将 `notes/evidence-search.md` 写入 artifacts，artifact label 为 `Evidence search results`。
+
+### 规则
+
+- 第一版不做 embedding、不做向量数据库、不引入复杂依赖；
+- 检索结果只是 evidence candidates，不生成答案或论文解释；
+- 下游 LLM 生成可以使用检索结果缩小证据范围，但必须保留 chunk id/page 引用；
+- 没有 chunks 文件时返回 partial，不阻塞其他 workflow。
+
 ## 7. 深度笔记生成流程
 
 ### 主输出
@@ -420,6 +498,31 @@ notes/README.md
 - Practical Takeaways 从已写入的 Core Method、Experiments、Limitations、Deep Q&A 证据草稿派生学习型 takeaway，保留来源章节和页码，不生成项目建议；
 - 将 `note.write_deep_note_mvp` 写入 timeline；
 - 将更新后的 `notes/README.md` 写入 artifacts。
+
+当前 Python MVP 已做 ai-paper-reader Prompt Pack：
+
+- 生成 `notes/ai-paper-reader-prompt.md`；
+- 将 `note.prepare_ai_paper_reader_prompt` 写入 timeline；
+- 将 artifact label 设为 `AI Paper Reader Prompt`；
+- Prompt 明确要求另一个 Codex 对话先读取 `./docs/PAPER_SKILL.md`，并同时记录 canonical skill 路径 `C:/Users/Administrator/.codex/skills/neversight-skills_feed-ai-paper-reader/SKILL.md`；
+- Prompt 写入论文工作区、`metadata.json`、`raw/paper.pdf`、`notes/README.md`、`notes/evidence-map.md`、`images/manifest.md` 的绝对路径；
+- 缺少 PDF、evidence map 或 image manifest 时仍生成 prompt，并在 artifact inventory 中标注 missing；
+- Prompt 要求使用 ai-paper-reader 结构：元信息、TL;DR、论文概述、背景与动机、核心方法、实验分析、深度理解问答、总结与思考；
+- Prompt 明确要求不得编造论文内容，无法从 artifacts 验证的内容标注为待核查。
+
+当前 Python MVP 已做 ai-paper-reader Note Generation：
+
+- 配置项目根目录 `.env` 或系统环境变量中的 `PAPERFORGE_LLM_BASE_URL`、`PAPERFORGE_LLM_API_KEY`、`PAPERFORGE_READER_MODEL` 后，Streamlit 可点击 `Generate ai-paper-reader Note`；
+- DeepSeek 等 OpenAI-compatible provider 通过 `paperforge/llm_client.py` 调用 `/chat/completions`；
+- `PAPERFORGE_READER_MODEL` 用于复杂阅读笔记生成，当前建议为 `deepseek-v4-pro`；
+- 生成 `notes/ai-paper-reader-note.md`；
+- 同时保存 `notes/ai-paper-reader-generation-prompt.md`，方便检查 skill、artifact 和 evidence 是如何交给 LLM 的；
+- 将 `note.generate_ai_paper_reader_note` 写入 timeline；
+- artifact labels 为 `AI Paper Reader Note` 和 `AI Paper Reader Generation Prompt`；
+- 缺少 LLM 配置时不调用模型，step 标记为 `needs_user_input`；
+- 远端 LLM 不能直接读取本地 PDF 文件，因此 prompt 会优先包含 `notes/evidence-map.md`、`notes/README.md` 和 `images/manifest.md` 的文本内容；PDF 路径只作为资产引用；
+- Step 28 之后，ai-paper-reader note generation 应优先使用 `notes/evidence-chunks.md`，缺失时再 fallback 到 `notes/evidence-map.md`；
+- API key 从 `.env` 或系统环境变量读取，不写入 job、notes 或 prompt 文件；`.env` 不提交进 git。
 
 ### 质量规则
 
@@ -614,6 +717,7 @@ notes/package-status.md
 - 检查 `raw/paper.pdf` 是否存在，缺失时记录为 warning；
 - 检查 `images/manifest.md` 是否存在，缺失时记录为 warning；
 - 检查 `notes/evidence-map.md` 是否存在，缺失时记录为 warning；
+- Step 26 起，`notes/evidence-chunks.md` 是 recommended evidence artifact；缺失不阻塞当前 package validation，但后续 RAG 和 chunk-grounded generation 会被标记为 partial；
 - 检查 `notes/external-sources.md`、`notes/code-references.md`、`notes/README.md`、`notes/terminology.md`、`notes/doubts.md`、`notes/interview-project.md` 是否存在；
 - 检查 `raw/source.tar.gz` 和 `raw/tex-source/` 是否存在，但只标记为 optional，不作为失败条件；
 - 只判断文件是否存在，不判断笔记质量、论文理解深度或项目适配度。
@@ -702,6 +806,7 @@ Streamlit 工作台应该把 timeline 渲染成可视化 plan 或任务时间线
 - 每个外部来源都有 URL 和可靠性标签。
 - `notes/package-status.md` 存在，并清楚列出 required、recommended 和 optional 产物状态。
 - `notes/evidence-map.md` 存在，并提供页码级文本证据入口。
+- `notes/evidence-chunks.md` 存在，并提供 paragraph / chunk 级文本证据入口。
 - `notes/deep-note-plan.md` 存在，并清楚列出各主笔记章节的生成准备度。
 
-当前 Step 23 满足文件存在性、页码级文本证据、深度笔记准备度计划，TL;DR / Paper Overview / Background and Motivation / Core Method / Experiments / Limitations / Deep Q&A / Practical Takeaways 的保守证据草稿、有页码证据的术语候选、从证据草稿派生的疑难点候选、本地代码目录的文件级代码映射候选，以及面试项目适配度评估；完整方法解释、实验深度解读、完整术语解释、完整疑难点分析、行级代码方法映射和完整项目方案仍未满足。
+当前 Step 27 满足 LLM provider config、query planning、文件存在性、页码级文本证据、paragraph / chunk 级文本证据、本地 evidence search、深度笔记准备度计划，TL;DR / Paper Overview / Background and Motivation / Core Method / Experiments / Limitations / Deep Q&A / Practical Takeaways 的保守证据草稿、ai-paper-reader prompt pack、ai-paper-reader note generation、有页码证据的术语候选、从证据草稿派生的疑难点候选、本地代码目录的文件级代码映射候选，以及面试项目适配度评估；完整方法解释、实验深度解读、完整术语解释、完整疑难点分析、chunk-grounded LLM 生成、语义/向量检索、行级代码方法映射和完整项目方案仍未满足。

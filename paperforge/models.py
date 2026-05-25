@@ -26,6 +26,8 @@ ArtifactKind = Literal[
     "interview_mapping",
     "package_status",
     "evidence_map",
+    "evidence_chunks",
+    "evidence_search",
     "job_record",
 ]
 

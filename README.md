@@ -5,22 +5,27 @@
 它的目标不是再做一个“论文总结聊天框”，而是把一篇论文从零整理成一个可复用的研究工作区：
 
 1. 自动识别论文标题、作者、摘要、PDF 地址和 TeX Source 地址。
-2. 创建规范化论文目录，保存元信息和外部来源记录。
-3. 用 timeline 记录 agent 每一步做了什么、产出了什么、哪里失败。
-4. 下载 PDF 和 TeX Source，尝试解压论文源码。
-5. 整理官方论文链接、本地资产状态和用户补充的外部资料 URL。
-6. 从 PDF 提取图片并生成图片 manifest。
-7. 记录 GitHub 代码仓库候选并生成 code references。
-8. 生成论文笔记骨架，保留证据入口但不伪造深度解释。
-9. 生成术语库骨架。
-10. 生成疑难点骨架，并可从已有证据草稿派生疑难点候选。
-11. 生成面试项目映射骨架，保留项目判断入口但不自动下结论。
-12. 从 PDF 提取分页文本证据，生成 `notes/evidence-map.md`。
-13. 生成研究包状态检查报告，区分 required、recommended 和 optional 产物。
-14. 生成深度笔记准备计划，标记哪些章节有证据支撑、哪些暂不能自动生成。
-15. 写入保守版深度笔记 MVP，只填充 ready 的 TL;DR、Paper Overview、Background and Motivation、Core Method、Experiments、Limitations、Deep Q&A、Practical Takeaways，并保留页码/图片证据和人工复查标记。
-16. 在用户提供本地代码目录后，生成文件级代码映射证据，不自动 clone 第三方仓库。
-17. 评估论文作为面试项目素材的适配度，输出 high / medium / low / not recommended、最小 demo 范围和风险边界。
+2. 在 arXiv 查询前规划简称或模糊输入，例如把 `unet`、`u-net`、`u net` 解析到原始 U-Net 论文。
+3. 创建规范化论文目录，保存元信息、query plan 和外部来源记录。
+4. 用 timeline 记录 agent 每一步做了什么、产出了什么、哪里失败。
+5. 下载 PDF 和 TeX Source，尝试解压论文源码。
+6. 整理官方论文链接、本地资产状态和用户补充的外部资料 URL。
+7. 从 PDF 提取图片并生成图片 manifest。
+8. 记录 GitHub 代码仓库候选并生成 code references。
+9. 生成论文笔记骨架，保留证据入口但不伪造深度解释。
+10. 生成术语库骨架。
+11. 生成疑难点骨架，并可从已有证据草稿派生疑难点候选。
+12. 生成面试项目映射骨架，保留项目判断入口但不自动下结论。
+13. 从 PDF 提取分页文本证据，生成 `notes/evidence-map.md`。
+14. 从页码级 evidence map 切分 paragraph / chunk 级证据，生成 `notes/evidence-chunks.md`。
+15. 基于 evidence chunks 做本地关键词检索，生成 `notes/evidence-search.md`。
+16. 生成研究包状态检查报告，区分 required、recommended 和 optional 产物。
+17. 生成深度笔记准备计划，标记哪些章节有证据支撑、哪些暂不能自动生成。
+18. 写入保守版深度笔记 MVP，只填充 ready 的 TL;DR、Paper Overview、Background and Motivation、Core Method、Experiments、Limitations、Deep Q&A、Practical Takeaways，并保留页码/图片证据和人工复查标记。
+19. 生成 `notes/ai-paper-reader-prompt.md`，让另一个 Codex 对话读取 `./docs/PAPER_SKILL.md` 和 `ai-paper-reader` skill 后继续写专业阅读笔记。
+20. 在配置 LLM 后，按 `docs/PAPER_SKILL.md` 自动生成 `notes/ai-paper-reader-note.md`。
+21. 在用户提供本地代码目录后，生成文件级代码映射证据，不自动 clone 第三方仓库。
+22. 评估论文作为面试项目素材的适配度，输出 high / medium / low / not recommended、最小 demo 范围和风险边界。
 
 ## 为什么做这个项目
 
@@ -50,33 +55,38 @@ PaperForge Agent 要解决的是这个完整工作流，而不是单点问答。
 
 ## 当前可运行能力
 
-当前版本已经具备 intake + asset collection + source enrichment + PDF image extraction + code linking + note scaffold + terminology scaffold + doubts scaffold + interview mapping scaffold + package validation + PDF text evidence extraction + deep note planning + conservative deep note writing MVP + terminology evidence MVP + doubts evidence MVP + code mapping evidence MVP + interview project assessment MVP 的最小闭环：
+当前版本已经具备 LLM provider config + query planning + intake + asset collection + source enrichment + PDF image extraction + code linking + note scaffold + terminology scaffold + doubts scaffold + interview mapping scaffold + package validation + PDF text evidence extraction + paragraph / chunk evidence extraction + local evidence search + deep note planning + conservative deep note writing MVP + ai-paper-reader prompt pack + ai-paper-reader note generation + terminology evidence MVP + doubts evidence MVP + code mapping evidence MVP + interview project assessment MVP 的最小闭环：
 
 1. 输入论文标题、arXiv ID 或 URL。
-2. Agent 调用 arXiv API 解析论文元信息。
-3. 系统创建本地研究任务 `ResearchJob`。
-4. 系统在 `.paperforge-data/paper-vault/` 下生成论文工作区。
-5. 系统写入 `metadata.json` 和 `notes/external-sources.md`。
-6. Asset Collector 下载 `raw/paper.pdf` 和 `raw/source.tar.gz`。
-7. 系统尝试解压 `raw/tex-source/`。
-8. Source Enrichment Agent 更新 `notes/external-sources.md`，记录本地 PDF/TeX 状态和用户补充 URL。
-9. PDF Image Extractor 从 `raw/paper.pdf` 提取图片到 `images/` 并生成 `images/manifest.md`。
-10. Code Linker Agent 生成 `notes/code-references.md`，记录 GitHub 候选仓库但不自动 clone。
-11. Note Writer Agent 生成 `notes/README.md` 的结构化笔记骨架。
-12. Terminology Agent 生成 `notes/terminology.md` 的术语库骨架。
-13. Doubts Agent 生成 `notes/doubts.md` 的疑难点骨架。
-14. Interview Mapper Agent 生成 `notes/interview-project.md` 的面试项目映射骨架。
-15. PDF Text Evidence Extractor Agent 生成 `notes/evidence-map.md`，保留页码级文本证据入口。
-16. Research Package Validator Agent 生成 `notes/package-status.md`，检查研究包文件状态。
-17. Deep Note Planner Agent 生成 `notes/deep-note-plan.md`，判断深度笔记章节准备度。
-18. Deep Note Writer Agent 更新 `notes/README.md` 中 ready 的 TL;DR、Paper Overview、Background and Motivation、Core Method、Experiments、Limitations、Deep Q&A、Practical Takeaways，写入带页码/图片证据的保守草稿。
-19. Terminology Agent 更新 `notes/terminology.md`，只写入有页码证据的术语候选和人工复查标记。
-20. Doubts Agent 更新 `notes/doubts.md`，从主笔记证据草稿和术语条目派生带来源页码的疑难点候选。
-21. Code Mapping Agent 在用户提供本地代码仓库路径后扫描代码文件，把 Core Method 证据词映射到候选代码路径，并更新 `notes/code-references.md`。
-22. Interview Mapper Agent 更新 `notes/interview-project.md`，基于主笔记、代码映射和疑难点输出保守适配度评估、最小 demo 范围和风险。
-23. Streamlit 页面展示论文摘要、任务状态、agent timeline 和 artifact 列表。
+2. Query Planner 先生成 canonical title / search query，并把规划结果写入 `notes/query-plan.md`；arXiv ID、arXiv URL 和 PDF URL 不改写。
+3. Agent 调用 arXiv API 解析论文元信息。
+4. 系统创建本地研究任务 `ResearchJob`。
+5. 系统在 `.paperforge-data/paper-vault/` 下生成论文工作区。
+6. 系统写入 `metadata.json` 和 `notes/external-sources.md`。
+7. Asset Collector 下载 `raw/paper.pdf` 和 `raw/source.tar.gz`。
+8. 系统尝试解压 `raw/tex-source/`。
+9. Source Enrichment Agent 更新 `notes/external-sources.md`，记录本地 PDF/TeX 状态和用户补充 URL。
+10. PDF Image Extractor 从 `raw/paper.pdf` 提取图片到 `images/` 并生成 `images/manifest.md`。
+11. Code Linker Agent 生成 `notes/code-references.md`，记录 GitHub 候选仓库但不自动 clone。
+12. Note Writer Agent 生成 `notes/README.md` 的结构化笔记骨架。
+13. Terminology Agent 生成 `notes/terminology.md` 的术语库骨架。
+14. Doubts Agent 生成 `notes/doubts.md` 的疑难点骨架。
+15. Interview Mapper Agent 生成 `notes/interview-project.md` 的面试项目映射骨架。
+16. PDF Text Evidence Extractor Agent 生成 `notes/evidence-map.md`，保留页码级文本证据入口。
+17. Evidence Chunker Agent 读取 `notes/evidence-map.md`，生成 `notes/evidence-chunks.md`，记录 chunk id、page、section guess、字符数和文本 excerpt。
+18. Evidence Retriever Agent 根据用户查询检索 `notes/evidence-chunks.md`，生成 `notes/evidence-search.md`，返回 chunk id、page、score 和 excerpt。
+19. Research Package Validator Agent 生成 `notes/package-status.md`，检查研究包文件状态。
+20. Deep Note Planner Agent 生成 `notes/deep-note-plan.md`，判断深度笔记章节准备度。
+21. Deep Note Writer Agent 更新 `notes/README.md` 中 ready 的 TL;DR、Paper Overview、Background and Motivation、Core Method、Experiments、Limitations、Deep Q&A、Practical Takeaways，写入带页码/图片证据的保守草稿。
+22. AI Paper Reader Prompt Pack 生成 `notes/ai-paper-reader-prompt.md`，明确要求另一个 Codex 对话读取 `./docs/PAPER_SKILL.md` 和 canonical skill 路径。
+23. AI Paper Reader Note Writer 使用 OpenAI-compatible LLM 生成 `notes/ai-paper-reader-note.md`，同时保存 `notes/ai-paper-reader-generation-prompt.md` 方便复盘。
+24. Terminology Agent 更新 `notes/terminology.md`，只写入有页码证据的术语候选和人工复查标记。
+25. Doubts Agent 更新 `notes/doubts.md`，从主笔记证据草稿和术语条目派生带来源页码的疑难点候选。
+26. Code Mapping Agent 在用户提供本地代码仓库路径后扫描代码文件，把 Core Method 证据词映射到候选代码路径，并更新 `notes/code-references.md`。
+27. Interview Mapper Agent 更新 `notes/interview-project.md`，基于主笔记、代码映射和疑难点输出保守适配度评估、最小 demo 范围和风险。
+28. Streamlit 页面展示论文摘要、任务状态、agent timeline 和 artifact 列表。
 
-当前接续点：核心 MVP 已完成。下一步建议先做 LLM Query Planner 与 ai-paper-reader Prompt Pack，解决简称找错论文和复用现有阅读笔记 skill 的问题；随后再做段落级 evidence map。详见 [扩展路线图](docs/EXTENSION_ROADMAP.md)。
+当前接续点：核心 MVP、Extension 0、LLM 执行层、段落级 evidence chunks 和本地 evidence search 已完成。下一步建议让 ai-paper-reader note generation 优先使用 `notes/evidence-chunks.md`。详见 [扩展路线图](docs/EXTENSION_ROADMAP.md)。
 
 ## 项目结构
 
@@ -85,18 +95,24 @@ PaperForge-Agent/
 ├── app.py                         # Streamlit 页面入口
 ├── paperforge/                    # Python 核心代码
 │   ├── arxiv_client.py             # arXiv 查询和解析
+│   ├── ai_paper_reader_note.py      # LLM-backed ai-paper-reader note generation
+│   ├── ai_paper_reader_prompt.py    # ai-paper-reader Codex handoff prompt
 │   ├── asset_collector.py           # PDF / TeX Source 下载和解压
 │   ├── code_linker.py               # GitHub 候选仓库整理和本地代码映射证据
 │   ├── deep_note_planner.py          # 深度笔记准备度计划
 │   ├── deep_note_writer.py           # 保守版深度笔记 MVP
 │   ├── doubts_agent.py              # 疑难点骨架和证据草稿生成
+│   ├── evidence_chunker.py           # paragraph / chunk 级证据切分
+│   ├── evidence_retriever.py         # 本地 evidence chunk 关键词检索
 │   ├── interview_mapper.py           # 面试项目映射骨架和适配度评估
 │   ├── intake_agent.py             # 论文 intake agent workflow
+│   ├── llm_client.py                # OpenAI-compatible LLM client/config
 │   ├── models.py                   # ResearchJob / AgentStep / Artifact 数据结构
 │   ├── note_writer.py               # 论文笔记骨架生成
 │   ├── package_validator.py          # 研究包状态检查
 │   ├── pdf_image_extractor.py       # PDF 图片提取
 │   ├── pdf_text_extractor.py        # PDF 文本证据提取
+│   ├── query_planner.py             # arXiv 查询前的论文身份规划
 │   ├── source_enrichment.py         # 外部来源和本地资产状态整理
 │   ├── terminology_agent.py         # 术语库骨架和证据草稿生成
 │   ├── slug.py                     # 论文目录名生成
@@ -128,6 +144,26 @@ source .venv/Scripts/activate
 ```powershell
 uv run streamlit run app.py
 ```
+
+LLM 配置会自动读取项目根目录的 `.env` 文件；`.env` 已在 `.gitignore` 中，不要提交真实 key。DeepSeek 的 OpenAI-compatible 配置示例：
+
+```powershell
+$env:PAPERFORGE_LLM_BASE_URL="https://api.deepseek.com"
+$env:PAPERFORGE_LLM_API_KEY="<your-deepseek-api-key>"
+$env:PAPERFORGE_QUERY_MODEL="deepseek-v4-flash"
+$env:PAPERFORGE_READER_MODEL="deepseek-v4-pro"
+```
+
+也可以直接写入本地 `.env`：
+
+```text
+PAPERFORGE_LLM_BASE_URL=https://api.deepseek.com
+PAPERFORGE_LLM_API_KEY=<your-deepseek-api-key>
+PAPERFORGE_QUERY_MODEL=deepseek-v4-flash
+PAPERFORGE_READER_MODEL=deepseek-v4-pro
+```
+
+`PAPERFORGE_QUERY_MODEL` 用于论文简称到 canonical title 的 query planner；`PAPERFORGE_READER_MODEL` 用于生成 `notes/ai-paper-reader-note.md` 这类复杂阅读笔记。
 
 验证：
 

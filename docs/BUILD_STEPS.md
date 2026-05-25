@@ -2903,3 +2903,479 @@ git diff --check
 ```
 
 这次是文档阶段，不需要运行 pytest。
+
+## Step 24: LLM Query Planner 与 ai-paper-reader Prompt Pack
+
+### 目标
+
+把 Extension 0 从文档落到 Python + Streamlit 运行时：
+
+```text
+用户输入 unet / u-net / u net
+  -> query planner 识别为原始 U-Net 论文
+  -> arXiv 使用 canonical title 查询
+  -> notes/query-plan.md 记录规划过程
+```
+
+```text
+PaperForge job artifacts
+  -> notes/ai-paper-reader-prompt.md
+  -> 另一个 Codex 对话读取 ./docs/PAPER_SKILL.md
+  -> 按 ai-paper-reader 结构继续写专业阅读笔记
+```
+
+### 为什么这样做
+
+当前直接把用户输入交给 arXiv 标题搜索，遇到简称或俗称时容易找错论文。先做 query planning 可以把入口意图记录下来，也能让 fallback 行为可复盘。
+
+`ai-paper-reader` 是 Codex skill，不是 PaperForge Python 包。第一版不在 Streamlit 内直接调用 skill，而是生成 prompt pack，让另一个 Codex 对话明确读取 `./docs/PAPER_SKILL.md` 和 canonical skill 路径。
+
+### 已完成文件
+
+新增核心模块：
+
+- `paperforge/query_planner.py`
+- `paperforge/ai_paper_reader_prompt.py`
+
+修改 workflow 和工作台：
+
+- `paperforge/intake_agent.py`
+- `app.py`
+
+新增测试：
+
+- `tests/test_query_planner.py`
+- `tests/test_ai_paper_reader_prompt.py`
+
+更新文档：
+
+- `README.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/PROGRESS.md`
+- `docs/BUILD_STEPS.md`
+
+### 当前能力
+
+已支持：
+
+- `QueryPlan` 数据结构；
+- `QueryPlannerClient` 可注入接口；
+- `plan_paper_query(raw_input, client=None)`；
+- `write_query_plan_markdown(...)` 写入 `notes/query-plan.md`；
+- `unet`、`u-net`、`u net` 确定性解析到 `U-Net: Convolutional Networks for Biomedical Image Segmentation`；
+- author hint 记录为 `Ronneberger`，year hint 记录为 `2015`；
+- arXiv ID、arXiv URL 和 PDF URL 不交给 LLM 改写；
+- fake LLM 返回合法 JSON 时使用 canonical title / search query；
+- fake LLM 返回空、坏 JSON 或异常时 fallback；
+- intake workflow 在 arXiv 查询前增加 `query.plan_paper_identity`；
+- Streamlit intake 区域增加 `Use LLM query planner` 复选框；
+- `run_ai_paper_reader_prompt_pack(job)` 生成 `notes/ai-paper-reader-prompt.md`；
+- Prompt 明确要求另一个 Codex 对话读取 `./docs/PAPER_SKILL.md`，并记录 canonical skill 路径；
+- Prompt 写入 metadata、PDF、README、evidence map、image manifest 的绝对路径；
+- 缺少 PDF、evidence map 或 image manifest 时仍生成 prompt，并标注 missing；
+- 将 `note.prepare_ai_paper_reader_prompt` 写入 timeline，artifact label 为 `AI Paper Reader Prompt`。
+
+### 验证方式
+
+运行测试：
+
+```powershell
+uv run python -m pytest
+```
+
+运行编译检查：
+
+```powershell
+uv run python -m compileall app.py paperforge tests scripts
+```
+
+运行 diff 空白检查：
+
+```powershell
+git diff --check
+```
+
+当前验证结果：
+
+```text
+pytest: 62 passed
+compileall: app.py paperforge tests scripts passed
+git diff --check: passed
+```
+
+### 这一阶段没有做什么
+
+- 没有接入真实 OpenAI API 或其他 LLM provider；
+- 没有把 Codex skill 当 Python 包导入；
+- 没有生成完整自动论文报告；
+- 没有引入 React、TypeScript、Express 或前后端分离框架。
+
+### 下一步建议
+
+下一步建议做 **Extension 1: 段落级 Evidence Map**：
+
+```text
+raw/paper.pdf + notes/evidence-map.md
+  -> paragraph / chunk 级证据
+  -> 后续 RAG、深度解释、术语解释和疑难点分析的更细来源定位
+```
+
+## Step 25: LLM Provider Config + ai-paper-reader Note Generation
+
+### 目标
+
+把 Step 24 的 handoff prompt 扩展成真正的 LLM 执行层：
+
+```text
+DeepSeek OpenAI-compatible config
+  -> query planner 使用 deepseek-v4-flash
+  -> ai-paper-reader note writer 使用 deepseek-v4-pro
+  -> notes/ai-paper-reader-note.md
+```
+
+### 为什么这样做
+
+Prompt Pack 只能把资料交给另一个 Codex 对话，不能算应用内自动生成论文笔记。当前阶段把 `docs/PAPER_SKILL.md` 接入真实 LLM 调用，但仍然保持几个边界：
+
+- API key 从项目根目录 `.env` 或系统环境变量读取，不写入仓库、job 或 notes；
+- 远端 LLM 不能直接打开本地 PDF，所以 prompt 重点使用 `notes/evidence-map.md`、`notes/README.md` 和 `images/manifest.md`；
+- 测试仍然使用 fake client，不调用真实 DeepSeek，也不消耗额度。
+
+### 已完成文件
+
+新增核心模块：
+
+- `paperforge/llm_client.py`
+- `paperforge/ai_paper_reader_note.py`
+
+修改核心模块和工作台：
+
+- `paperforge/query_planner.py`
+- `app.py`
+
+新增测试：
+
+- `tests/test_llm_client.py`
+- `tests/test_ai_paper_reader_note.py`
+- `tests/test_query_planner.py`
+
+更新配置和文档：
+
+- `.env.example`
+- `README.md`
+- `docs/PROGRESS.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/BUILD_STEPS.md`
+
+### 当前能力
+
+已支持：
+
+- OpenAI-compatible `/chat/completions` 调用；
+- 自动读取项目根目录 `.env`，并从 `.env` 或系统环境变量读取：
+  - `PAPERFORGE_LLM_BASE_URL`
+  - `PAPERFORGE_LLM_API_KEY`
+  - `PAPERFORGE_QUERY_MODEL`
+  - `PAPERFORGE_READER_MODEL`
+  - `PAPERFORGE_LLM_TIMEOUT_SECONDS`
+- `LlmConfig.__repr__` 隐藏 API key；
+- query planner 在没有显式 fake client 且环境变量配置完整时使用 `PAPERFORGE_QUERY_MODEL`；
+- 仍保留 deterministic alias 和 fallback；
+- `run_ai_paper_reader_note_generation(job)` 读取 `docs/PAPER_SKILL.md` 和 job artifacts；
+- 生成 `notes/ai-paper-reader-note.md`；
+- 保存 `notes/ai-paper-reader-generation-prompt.md`；
+- 缺少 LLM 配置时 step 为 `needs_user_input`；
+- 缺少 PDF、evidence map 或 image manifest 时仍可生成，但 step 为 `partial`；
+- Streamlit 增加 `Generate ai-paper-reader Note` 按钮。
+
+### 配置方式
+
+PowerShell 示例：
+
+```powershell
+$env:PAPERFORGE_LLM_BASE_URL="https://api.deepseek.com"
+$env:PAPERFORGE_LLM_API_KEY="<your-deepseek-api-key>"
+$env:PAPERFORGE_QUERY_MODEL="deepseek-v4-flash"
+$env:PAPERFORGE_READER_MODEL="deepseek-v4-pro"
+```
+
+不要把真实 API key 写入 git。
+
+也可以直接写入本地 `.env`，该文件已被 `.gitignore` 忽略：
+
+```text
+PAPERFORGE_LLM_BASE_URL=https://api.deepseek.com
+PAPERFORGE_LLM_API_KEY=<your-deepseek-api-key>
+PAPERFORGE_QUERY_MODEL=deepseek-v4-flash
+PAPERFORGE_READER_MODEL=deepseek-v4-pro
+```
+
+### 验证方式
+
+运行测试：
+
+```powershell
+uv run python -m pytest
+```
+
+运行编译检查：
+
+```powershell
+uv run python -m compileall app.py paperforge tests scripts
+```
+
+运行 diff 空白检查：
+
+```powershell
+git diff --check
+```
+
+当前验证结果会在本轮最终验证后记录。
+当前验证结果：
+
+```text
+pytest: 73 passed
+compileall: app.py paperforge tests scripts passed
+git diff --check: passed
+```
+
+### 这一阶段没有做什么
+
+- 没有在测试中调用真实 DeepSeek；
+- 没有上传 PDF 文件给模型；
+- 没有把 API key 写入 `.env` 或任何 tracked 文件；
+- 没有引入 React、TypeScript、Express 或前后端分离框架。
+
+### 下一步建议
+
+下一步仍建议做 **Extension 1: 段落级 Evidence Map**。现在有真实 LLM 生成能力后，更细的 paragraph / chunk evidence 会直接提升生成质量和可核查性。
+
+## Step 26: Paragraph / Chunk-level Evidence Map
+
+### 目标
+
+把已有的页码级证据文件继续细化：
+
+```text
+notes/evidence-map.md
+  -> 解析 Page 1 / Page 2 等 page excerpt
+  -> 按 paragraph 或合理长度切成 chunk
+  -> notes/evidence-chunks.md
+```
+
+本阶段只做证据切分，不重新解析 PDF，不总结论文，不生成论文解释。
+
+### 为什么这样做
+
+前一阶段已经能生成 `notes/evidence-map.md`，但它只有页码级 excerpt。后续 RAG、深度解释、术语解释和疑难点分析需要更精确的来源定位，否则只能引用整页，证据粒度太粗。
+
+Step 26 先用确定性规则把 page excerpt 切成 chunk：
+
+- 复用现有 evidence map，不扩大 PDF 解析 scope；
+- 每个 chunk 有稳定 id，例如 `p001-c001`；
+- 保留 page、section guess、字符数和文本 excerpt；
+- 缺少 evidence-map 或页面无文本时返回 partial，不阻塞 job。
+
+### 已完成文件
+
+新增核心模块：
+
+- `paperforge/evidence_chunker.py`
+
+修改核心模块和工作台：
+
+- `paperforge/models.py`
+- `app.py`
+- `scripts/run_pipeline.py`
+
+新增测试：
+
+- `tests/test_evidence_chunker.py`
+
+更新文档：
+
+- `README.md`
+- `docs/PROGRESS.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/EXTENSION_ROADMAP.md`
+- `docs/STATUS_REVIEW.md`
+- `docs/BUILD_STEPS.md`
+
+### 当前能力
+
+已支持：
+
+- 读取 `notes/evidence-map.md`；
+- 解析 `### Page N` 下的 fenced text excerpt；
+- 按空行切分 paragraph；
+- 对过长 paragraph 按合理长度切分；
+- 合并短 section heading 和后续正文；
+- 生成稳定 chunk id：`p001-c001`、`p001-c002`；
+- 为 chunk 标注 `introduction`、`method`、`experiment`、`limitation` 或 `unknown`；
+- 生成 `notes/evidence-chunks.md`；
+- Markdown 输出包含 chunk inventory 和 chunk evidence sections；
+- 缺少 `notes/evidence-map.md` 时写 partial report；
+- 有空页或没有 chunk 时标记 `partial`；
+- 将 `pdf.extract_evidence_chunks` 写入 timeline；
+- artifact label 为 `Evidence chunks`；
+- Streamlit 增加 `Extract Evidence Chunks` 按钮；
+- 真实流水线脚本在 PDF text evidence 后执行 evidence chunk extraction。
+
+### 验证方式
+
+运行测试：
+
+```powershell
+uv run python -m pytest
+```
+
+运行编译检查：
+
+```powershell
+uv run python -m compileall app.py paperforge tests scripts
+```
+
+运行 diff 空白检查：
+
+```powershell
+git diff --check
+```
+
+当前验证结果：
+
+```text
+pytest: 77 passed
+compileall: app.py paperforge tests scripts passed
+git diff --check: passed
+```
+
+### 这一阶段没有做什么
+
+- 没有重新解析 PDF；
+- 没有做 OCR；
+- 没有做 embedding 或向量数据库；
+- 没有生成论文解释或总结；
+- 没有修改 ai-paper-reader、terminology 或 doubts 的证据读取逻辑，这些留到后续 Step 28/29。
+
+### 下一步建议
+
+下一步建议做 **Step 27: RAG / 本地检索 MVP**：
+
+```text
+user query + notes/evidence-chunks.md
+  -> deterministic keyword scoring
+  -> notes/evidence-search.md
+  -> 返回 chunk id、page、score、excerpt
+```
+
+## Step 27: RAG / 本地检索 MVP
+
+### 目标
+
+基于 Step 26 的 `notes/evidence-chunks.md` 做第一版本地检索：
+
+```text
+user query + notes/evidence-chunks.md
+  -> deterministic keyword retrieval
+  -> notes/evidence-search.md
+```
+
+本阶段不做向量数据库、不引入复杂依赖，也不生成答案。输出只是 evidence candidates。
+
+### 为什么这样做
+
+有了 paragraph / chunk 级证据后，需要先验证 chunks 能不能被稳定检索到。直接上 embedding 或语义检索会扩大 scope；第一版用确定性关键词评分即可覆盖演示和测试：
+
+- 查询 method 相关词能命中 method chunk；
+- 查询 experiment 相关词能命中 experiment chunk；
+- 输出必须带 chunk id、page、score 和 excerpt；
+- 缺少 chunks 文件时返回 partial，不阻塞 job。
+
+### 已完成文件
+
+新增核心模块：
+
+- `paperforge/evidence_retriever.py`
+
+修改核心模块和工作台：
+
+- `paperforge/models.py`
+- `app.py`
+- `scripts/run_pipeline.py`
+
+新增测试：
+
+- `tests/test_evidence_retriever.py`
+
+更新文档：
+
+- `README.md`
+- `docs/PROGRESS.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/EXTENSION_ROADMAP.md`
+- `docs/STATUS_REVIEW.md`
+- `docs/DOCUMENTATION_GUIDE.md`
+- `docs/BUILD_STEPS.md`
+
+### 当前能力
+
+已支持：
+
+- 解析 `notes/evidence-chunks.md` 的 chunk blocks；
+- 输入用户查询；
+- 使用确定性关键词匹配 / BM25-like 简单评分；
+- 返回 chunk id、page、section guess、score 和 excerpt；
+- 按分数降序、页码和 chunk id 稳定排序；
+- 生成 `notes/evidence-search.md`；
+- 缺少 `notes/evidence-chunks.md` 时写 partial report；
+- 空查询时返回 `needs_user_input`；
+- 将 `evidence.search_chunks` 写入 timeline；
+- artifact label 为 `Evidence search results`；
+- Streamlit 增加 `Evidence search query` 输入框和 `Search Evidence Chunks` 按钮；
+- 真实流水线脚本支持 `PAPERFORGE_EVIDENCE_QUERY`，默认使用 `method experiment`。
+
+### 验证方式
+
+运行测试：
+
+```powershell
+uv run python -m pytest
+```
+
+运行编译检查：
+
+```powershell
+uv run python -m compileall app.py paperforge tests scripts
+```
+
+运行 diff 空白检查：
+
+```powershell
+git diff --check
+```
+
+当前验证结果：
+
+```text
+pytest: 81 passed
+compileall: app.py paperforge tests scripts passed
+git diff --check: passed
+```
+
+### 这一阶段没有做什么
+
+- 没有做 embedding；
+- 没有做向量数据库；
+- 没有做跨论文检索；
+- 没有把检索结果包装成论文回答；
+- 没有修改 ai-paper-reader、terminology 或 doubts 的 evidence chunk 使用逻辑。
+
+### 下一步建议
+
+下一步建议做 **Step 28: ai-paper-reader Note 使用 Evidence Chunks**：
+
+```text
+notes/evidence-chunks.md + notes/evidence-map.md
+  -> ai-paper-reader generation prompt 优先包含 chunks excerpt
+  -> 缺失 chunks 时 fallback 到 evidence-map
+```

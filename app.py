@@ -5,6 +5,8 @@ from pathlib import Path
 
 import streamlit as st
 
+from paperforge.ai_paper_reader_prompt import run_ai_paper_reader_prompt_pack
+from paperforge.ai_paper_reader_note import run_ai_paper_reader_note_generation
 from paperforge.asset_collector import run_asset_collection
 from paperforge.code_linker import run_code_linking, run_code_mapping_evidence
 from paperforge.deep_note_planner import run_deep_note_planning
@@ -14,6 +16,8 @@ from paperforge.interview_mapper import run_interview_mapping_assessment, run_in
 from paperforge.intake_agent import run_paper_intake
 from paperforge.note_writer import run_note_writing
 from paperforge.package_validator import run_package_validation
+from paperforge.evidence_chunker import run_evidence_chunk_extraction
+from paperforge.evidence_retriever import run_evidence_search
 from paperforge.pdf_image_extractor import run_pdf_image_extraction
 from paperforge.pdf_text_extractor import run_pdf_text_extraction
 from paperforge.source_enrichment import run_source_enrichment
@@ -40,26 +44,31 @@ def main() -> None:
         st.markdown(
             """
             1. 输入论文标题或 arXiv 链接
-            2. Agent 解析论文身份
-            3. 创建 paper workspace
-            4. 写入 metadata 和 source log
-            5. 下载 PDF 和 TeX Source
-            6. 提取 PDF 图片
-            7. 整理外部资料来源
-            8. 整理代码仓库候选
-            9. 生成论文笔记骨架
-            10. 生成术语库骨架
-            11. 生成疑难点骨架
-            12. 生成面试项目映射骨架
-            13. 提取 PDF 文本证据
-            14. 验证研究包状态
-            15. 规划深度笔记生成准备度
-            16. 写入保守版深度笔记草稿
-            17. 写入术语证据草稿
-            18. 写入疑难点证据草稿
-            19. 写入代码映射证据草稿
-            20. 评估面试项目适配度
-            21. 展示 timeline 和 artifacts
+            2. Query Planner 规划论文身份
+            3. Agent 解析论文身份
+            4. 创建 paper workspace
+            5. 写入 metadata 和 source log
+            6. 下载 PDF 和 TeX Source
+            7. 提取 PDF 图片
+            8. 整理外部资料来源
+            9. 整理代码仓库候选
+            10. 生成论文笔记骨架
+            11. 生成术语库骨架
+            12. 生成疑难点骨架
+            13. 生成面试项目映射骨架
+            14. 提取 PDF 文本证据
+            15. 提取段落级 evidence chunks
+            16. 检索 evidence chunks
+            17. 验证研究包状态
+            18. 规划深度笔记生成准备度
+            19. 写入保守版深度笔记草稿
+            20. 准备 ai-paper-reader Prompt
+            21. 生成 ai-paper-reader 笔记
+            22. 写入术语证据草稿
+            23. 写入疑难点证据草稿
+            24. 写入代码映射证据草稿
+            25. 评估面试项目适配度
+            26. 展示 timeline 和 artifacts
             """
         )
 
@@ -69,11 +78,12 @@ def main() -> None:
         value=default_input,
         height=110,
     )
+    use_query_planner = st.checkbox("Use LLM query planner", value=True)
 
     if st.button("Start Intake", type="primary"):
         if paper_input.strip():
             with st.spinner("Agent 正在解析论文并创建研究工作区..."):
-                job = run_paper_intake(paper_input.strip())
+                job = run_paper_intake(paper_input.strip(), use_query_planner=use_query_planner)
             st.success(f"Intake 完成：{job.paper_slug}")
             st.session_state["active_job_id"] = job.id
         else:
@@ -166,6 +176,20 @@ def main() -> None:
             active_job = run_pdf_text_extraction(active_job)
         st.success(f"PDF text evidence extraction finished: {active_job.status}")
 
+    if active_job.metadata and st.button("Extract Evidence Chunks"):
+        with st.spinner("Evidence Chunker 正在切分段落级证据..."):
+            active_job = run_evidence_chunk_extraction(active_job)
+        st.success(f"Evidence chunk extraction finished: {active_job.status}")
+
+    evidence_search_query = st.text_input(
+        "Evidence search query",
+        value="",
+    )
+    if active_job.metadata and st.button("Search Evidence Chunks"):
+        with st.spinner("Evidence Retriever 正在检索本地证据 chunks..."):
+            active_job = run_evidence_search(active_job, evidence_search_query)
+        st.success(f"Evidence search finished: {active_job.status}")
+
     if active_job.metadata and st.button("Validate Research Package"):
         with st.spinner("Research Package Validator 正在检查研究包产物..."):
             active_job = run_package_validation(active_job)
@@ -180,6 +204,16 @@ def main() -> None:
         with st.spinner("Deep Note Writer 正在写入带证据标记的保守草稿..."):
             active_job = run_deep_note_writing(active_job)
         st.success(f"Deep note writing finished: {active_job.status}")
+
+    if active_job.metadata and st.button("Prepare ai-paper-reader Prompt"):
+        with st.spinner("Prompt Pack 正在生成可复制给 Codex 的阅读提示词..."):
+            active_job = run_ai_paper_reader_prompt_pack(active_job)
+        st.success(f"AI paper reader prompt prepared: {active_job.status}")
+
+    if active_job.metadata and st.button("Generate ai-paper-reader Note"):
+        with st.spinner("DeepSeek 正在按 ai-paper-reader skill 生成论文笔记..."):
+            active_job = run_ai_paper_reader_note_generation(active_job)
+        st.success(f"AI paper reader note generation finished: {active_job.status}")
 
     if active_job.metadata and st.button("Write Terminology Evidence"):
         with st.spinner("Terminology Agent 正在写入带页码证据的术语草稿..."):

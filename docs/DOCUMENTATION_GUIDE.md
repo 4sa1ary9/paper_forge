@@ -13,7 +13,7 @@ PaperForge Agent 不是一个只有代码的项目。它是一个 agent workflow
 
 这份文档用于规定项目后续应该准备哪些 Markdown 文档。
 
-当前文档状态应以 `docs/PROGRESS.md` 和 `docs/STATUS_REVIEW.md` 为准。截至 Step 27，项目已经完成 scaffold MVP + PDF text evidence map + paragraph / chunk evidence map + local evidence search MVP + deep note readiness gate + conservative deep note writing MVP（含 Core Method、Experiments、Limitations、Deep Q&A 和 Practical Takeaways 证据草稿）+ ai-paper-reader note generation + terminology evidence MVP + doubts evidence MVP + code mapping evidence MVP + interview project assessment MVP；完整深度笔记正文生成、完整术语解释、完整疑难点分析、完整项目方案、chunk-grounded LLM 生成、语义/向量检索、远端仓库读取和行级代码分析仍属于后续规划。
+当前文档状态应以 `docs/PROGRESS.md` 和 `docs/STATUS_REVIEW.md` 为准。截至 Step 28，项目已经完成 scaffold MVP + PDF text evidence map + paragraph / chunk evidence map + local evidence search MVP + deep note readiness gate + conservative deep note writing MVP（含 Core Method、Experiments、Limitations、Deep Q&A 和 Practical Takeaways 证据草稿）+ chunk-grounded ai-paper-reader note generation + terminology evidence MVP + doubts evidence MVP + code mapping evidence MVP + interview project assessment MVP；完整深度笔记正文生成、完整术语解释、完整疑难点分析、完整项目方案、terminology / doubts chunk evidence、语义/向量检索、远端仓库读取和行级代码分析仍属于后续规划。
 
 ## 2. 当前必须文档
 

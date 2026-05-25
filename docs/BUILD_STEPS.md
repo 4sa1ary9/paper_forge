@@ -3379,3 +3379,106 @@ notes/evidence-chunks.md + notes/evidence-map.md
   -> ai-paper-reader generation prompt 优先包含 chunks excerpt
   -> 缺失 chunks 时 fallback 到 evidence-map
 ```
+
+## Step 28: ai-paper-reader Note 使用 Evidence Chunks
+
+### 目标
+
+让 `notes/ai-paper-reader-note.md` 的生成 prompt 优先使用 Step 26 产出的 `notes/evidence-chunks.md`：
+
+```text
+notes/evidence-chunks.md + docs/PAPER_SKILL.md + job artifacts
+  -> notes/ai-paper-reader-generation-prompt.md
+  -> notes/ai-paper-reader-note.md
+```
+
+本阶段只改变 ai-paper-reader note generation 的 evidence 输入优先级，不改变 API key 管理方式，不扩大到 terminology / doubts。
+
+### 为什么这样做
+
+Step 27 已经验证 `notes/evidence-chunks.md` 可以被本地关键词检索命中。ai-paper-reader note generation 如果仍主要使用页码级 `notes/evidence-map.md`，LLM 只能引用粗粒度 page excerpt。Step 28 把更细的 chunk evidence 放进 generation prompt：
+
+- chunks 存在时优先携带 chunk excerpt 和 chunk id；
+- chunks 缺失时保持 `notes/evidence-map.md` fallback；
+- prompt 明确要求优先引用 chunk id；
+- 无法从 chunk 验证的内容必须标注为待核查；
+- 不允许凭模型记忆补全论文细节。
+
+### 已完成文件
+
+修改核心模块：
+
+- `paperforge/ai_paper_reader_note.py`
+
+更新测试：
+
+- `tests/test_ai_paper_reader_note.py`
+
+更新文档：
+
+- `README.md`
+- `docs/PROGRESS.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/EXTENSION_ROADMAP.md`
+- `docs/STATUS_REVIEW.md`
+- `docs/DOCUMENTATION_GUIDE.md`
+- `docs/BUILD_STEPS.md`
+
+### 当前能力
+
+已支持：
+
+- `notes/evidence-chunks.md` 存在时，generation prompt 包含该文件路径和截断后的 chunk excerpt；
+- `notes/evidence-chunks.md` 缺失时，自动 fallback 到 `notes/evidence-map.md`；
+- artifact inventory 只把当前实际使用的 primary evidence 文件标为 present；
+- prompt 要求优先引用 `p001-c001` 这类 chunk id；
+- prompt 要求无法从 chunk 验证的内容标注为待核查；
+- prompt 要求不得仅凭模型记忆补全论文细节；
+- prompt 截断策略保留，不把完整超长 chunks 文件塞入 LLM 请求；
+- API key 仍只从 `.env` 或系统环境变量读取，不写入 job、notes 或 prompt 文件。
+
+### 验证方式
+
+运行测试：
+
+```powershell
+uv run python -m pytest
+```
+
+运行编译检查：
+
+```powershell
+uv run python -m compileall app.py paperforge tests scripts
+```
+
+运行 diff 空白检查：
+
+```powershell
+git diff --check
+```
+
+当前验证结果：
+
+```text
+pytest: 83 passed
+compileall: app.py paperforge tests scripts passed
+git diff --check: passed
+```
+
+### 这一阶段没有做什么
+
+- 没有修改 LLM API key 读取方式；
+- 没有把完整超长 chunks 文件无截断塞入 prompt；
+- 没有改 terminology / doubts 的 evidence 派生逻辑；
+- 没有生成完整深度论文解释；
+- 没有引入向量数据库或新依赖。
+
+### 下一步建议
+
+下一步建议做 **Step 29: Terminology / Doubts 使用 Evidence Chunks**：
+
+```text
+notes/evidence-chunks.md
+  -> terminology candidates with chunk id + page
+  -> doubts candidates with chunk id + page
+```

@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-截至 Step 27，PaperForge Agent 的核心 MVP、Extension 0、Extension 1 和本地检索 MVP 已闭环：
+截至 Step 28，PaperForge Agent 的核心 MVP、Extension 0、Extension 1、本地检索 MVP 和 ai-paper-reader chunk evidence 接入已闭环：
 
 ```text
 query planning
@@ -19,6 +19,7 @@ query planning
   -> deep note readiness
   -> conservative deep note writing
   -> ai-paper-reader prompt pack
+  -> chunk-grounded ai-paper-reader note generation
   -> terminology evidence
   -> doubts evidence
   -> code mapping evidence
@@ -133,7 +134,7 @@ query planning
 
 ### Extension 3: Evidence-Grounded Deep Explanation
 
-状态：未开始。下一步先做 Step 28，让 ai-paper-reader note generation 优先使用 evidence chunks。
+状态：进行中。Step 28 已完成，让 ai-paper-reader note generation 优先使用 evidence chunks。下一步是 Step 29，让 terminology / doubts 使用 evidence chunks。
 
 目标：
 
@@ -150,6 +151,7 @@ query planning
 输出：
 
 - 更新后的 `notes/README.md`
+- 更新后的 `notes/ai-paper-reader-note.md`
 - 保留 chunk/page evidence 引用和人工复查标记。
 
 边界：
@@ -162,6 +164,10 @@ query planning
 
 - 测试章节替换、证据引用格式和缺失输入 partial 状态。
 - 真实样例检查生成内容是否引用具体 page/chunk。
+
+已完成的第一步：
+
+- Step 28：ai-paper-reader generation prompt 优先包含 `notes/evidence-chunks.md` excerpt，缺失时 fallback 到 `notes/evidence-map.md`；prompt 要求优先引用 chunk id、无法验证的内容标注为待核查、不得凭模型记忆补全论文细节。
 
 ### Extension 4: 语义 / 向量检索扩展
 
@@ -295,13 +301,13 @@ query planning
 
 ## 当前最推荐的下一步
 
-优先做 **Step 28: ai-paper-reader Note 使用 Evidence Chunks**。
+优先做 **Step 29: Terminology / Doubts 使用 Evidence Chunks**。
 
 原因：
 
-- Step 27 已验证 chunks 能被本地检索命中。
-- ai-paper-reader note generation 仍主要使用页码级 evidence map，需要优先改成读取 `notes/evidence-chunks.md`。
-- 这一步能直接降低 LLM 只引用粗页码 excerpt 的问题，同时保持 API key 管理和 prompt 截断策略不变。
+- Step 28 已验证 ai-paper-reader generation prompt 能优先携带 chunk evidence。
+- terminology / doubts 仍主要从 README 页码证据行派生，需要改成优先读取 `notes/evidence-chunks.md`。
+- 这一步能让术语和疑难点都保留 chunk id + page，而不是只保留粗页码。
 
 ## 暂不建议直接做
 

@@ -109,6 +109,14 @@ def test_code_mapping_evidence_maps_method_terms_to_local_code(monkeypatch, tmp_
     assert "`models/attention.py`" in content
     assert "attention" in content
     assert "encoder" in content
+    assert "### Candidate Symbols" in content
+    assert "- File path: `models/attention.py`" in content
+    assert "- Symbol name: `MultiHeadAttention`" in content
+    assert "- Symbol type: class" in content
+    assert "- Symbol name: `forward`" in content
+    assert "- Symbol type: function" in content
+    assert "- Confidence: medium" in content
+    assert "- Boundary: symbol-level candidate only; confirm manually before treating it as an implementation mapping." in content
     assert "- Clone decision: not cloned by PaperForge; local path supplied by user." in content
 
     step = updated.steps[-1]
@@ -120,6 +128,39 @@ def test_code_mapping_evidence_maps_method_terms_to_local_code(monkeypatch, tmp_
         "user-provided local code repository",
     ]
     assert step.outputs == ["paper-vault/sample-paper/notes/code-references.md"]
+
+
+def test_code_mapping_evidence_does_not_scan_ignored_dirs(monkeypatch, tmp_path):
+    monkeypatch.setenv("PAPERFORGE_DATA_DIR", str(tmp_path))
+    notes_dir = tmp_path / "paper-vault" / "sample-paper" / "notes"
+    notes_dir.mkdir(parents=True)
+    (notes_dir / "README.md").write_text(
+        "# Sample Paper\n\n## Core Method\n\n- Page 2 method evidence: The encoder uses attention.\n",
+        encoding="utf-8",
+    )
+    (notes_dir / "code-references.md").write_text("# Code References\n", encoding="utf-8")
+    code_repo = tmp_path / "local-code"
+    ignored_dir = code_repo / ".venv" / "lib"
+    ignored_dir.mkdir(parents=True)
+    (ignored_dir / "attention.py").write_text(
+        "class IgnoredAttention:\n    def ignored_encoder(self):\n        return 'attention'\n",
+        encoding="utf-8",
+    )
+    src_dir = code_repo / "src"
+    src_dir.mkdir(parents=True)
+    (src_dir / "encoder.py").write_text(
+        "def build_encoder_attention():\n    return 'attention encoder'\n",
+        encoding="utf-8",
+    )
+
+    updated = run_code_mapping_evidence(_job(), code_repo)
+
+    content = (notes_dir / "code-references.md").read_text(encoding="utf-8")
+    assert "`src/encoder.py`" in content
+    assert "build_encoder_attention" in content
+    assert "IgnoredAttention" not in content
+    assert ".venv/lib/attention.py" not in content
+    assert updated.steps[-1].state == "completed"
 
 
 def test_code_mapping_evidence_requires_user_provided_local_repo(monkeypatch, tmp_path):

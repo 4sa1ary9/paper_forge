@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-截至 Step 28，PaperForge Agent 的核心 MVP、Extension 0、Extension 1、本地检索 MVP 和 ai-paper-reader chunk evidence 接入已闭环：
+截至 Step 31，PaperForge Agent 的核心 MVP、Extension 0、Extension 1、本地检索 MVP、ai-paper-reader chunk evidence 接入、terminology / doubts chunk evidence 接入、function-level code mapping MVP 和多篇论文批处理 MVP 已闭环：
 
 ```text
 query planning
@@ -20,10 +20,11 @@ query planning
   -> conservative deep note writing
   -> ai-paper-reader prompt pack
   -> chunk-grounded ai-paper-reader note generation
-  -> terminology evidence
-  -> doubts evidence
-  -> code mapping evidence
+  -> chunk-aware terminology evidence
+  -> chunk-aware doubts evidence
+  -> function-level code mapping evidence
   -> interview project assessment
+  -> batch intake
 ```
 
 当前版本适合展示 agent workflow、状态管理、产物规范、证据约束和可扩展架构。它还不是完整深度研究系统。
@@ -134,7 +135,7 @@ query planning
 
 ### Extension 3: Evidence-Grounded Deep Explanation
 
-状态：进行中。Step 28 已完成，让 ai-paper-reader note generation 优先使用 evidence chunks。下一步是 Step 29，让 terminology / doubts 使用 evidence chunks。
+状态：进行中。Step 28 已完成，让 ai-paper-reader note generation 优先使用 evidence chunks；Step 29 已完成，让 terminology / doubts 使用 evidence chunks。后续可继续做更完整的 chunk-grounded deep explanation。
 
 目标：
 
@@ -168,6 +169,7 @@ query planning
 已完成的第一步：
 
 - Step 28：ai-paper-reader generation prompt 优先包含 `notes/evidence-chunks.md` excerpt，缺失时 fallback 到 `notes/evidence-map.md`；prompt 要求优先引用 chunk id、无法验证的内容标注为待核查、不得凭模型记忆补全论文细节。
+- Step 29：terminology 优先从 chunk excerpt 抽取术语候选；doubts 优先从 method / experiment / limitation chunks 派生疑难点；输出保留 chunk id 和 page，缺失 chunks 时 fallback 到旧页码证据逻辑。
 
 ### Extension 4: 语义 / 向量检索扩展
 
@@ -228,6 +230,8 @@ query planning
 
 ### Extension 6: 多篇论文批处理
 
+状态：已完成 Step 31 MVP。
+
 目标：
 
 - 支持同主题多篇论文的研究包队列。
@@ -241,7 +245,8 @@ query planning
 输出：
 
 - 多个 paper workspace。
-- 批处理 summary，例如 `notes/batch-summary.md`。
+- `.paperforge-data/batches/<batch-id>.json`
+- `.paperforge-data/batches/<batch-id>-summary.md`
 
 边界：
 
@@ -253,12 +258,18 @@ query planning
 
 - 测试多输入解析、单篇失败不阻塞后续、summary 生成。
 
+已完成：
+
+- Step 31：多行输入顺序调用 `run_paper_intake`；空行跳过；单篇失败不阻塞；batch JSON 和 summary 记录输入、job id、slug、status 和错误；Streamlit 增加 Batch Intake 区域。
+
 ### Extension 7: Advanced Code Analysis
+
+状态：进行中。Step 30 已完成 Code Mapping Function-level MVP。
 
 目标：
 
 - 从文件级代码映射进一步走向更细的代码理解。
-- 支持 line-level 或 function-level mapping。
+- 支持 function-level mapping，后续再考虑 line-level mapping。
 
 输入：
 
@@ -279,6 +290,10 @@ query planning
 验证：
 
 - 测试文件扫描、函数识别、路径过滤、缺失仓库处理。
+
+已完成的第一步：
+
+- Step 30：用户提供本地代码仓库路径后，扫描 Python function / class symbol，输出 file path、symbol name、symbol type、matched terms 和 confidence；继续过滤 ignored dirs；不自动 clone，不声明真实实现对应。
 
 ### Extension 8: Productization
 
@@ -301,13 +316,13 @@ query planning
 
 ## 当前最推荐的下一步
 
-优先做 **Step 29: Terminology / Doubts 使用 Evidence Chunks**。
+当前 Step 26-31 请求清单已完成。后续优先建议先做真实样例验证和 demo 整理，再决定是否进入语义 / 向量检索。
 
 原因：
 
-- Step 28 已验证 ai-paper-reader generation prompt 能优先携带 chunk evidence。
-- terminology / doubts 仍主要从 README 页码证据行派生，需要改成优先读取 `notes/evidence-chunks.md`。
-- 这一步能让术语和疑难点都保留 chunk id + page，而不是只保留粗页码。
+- 当前 workflow 已覆盖单篇研究包和多篇 intake；
+- 真实样例验证能先暴露演示和文档缺口；
+- 语义 / 向量检索会引入新索引设计，适合作为下一轮明确扩展再做。
 
 ## 暂不建议直接做
 

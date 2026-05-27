@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -80,6 +81,16 @@ MAX_MAPPING_RESULTS = 8
 class CodeFileMatch:
     relative_path: str
     matched_terms: list[str]
+    score: int
+
+
+@dataclass(frozen=True)
+class CodeSymbolMatch:
+    relative_path: str
+    symbol_name: str
+    symbol_type: str
+    matched_terms: list[str]
+    confidence: str
     score: int
 
 
@@ -178,7 +189,8 @@ def run_code_mapping_evidence(job: ResearchJob, code_repo_path: str | Path | Non
         readme = readme_path.read_text(encoding="utf-8")
         method_terms = _method_terms_from_readme(readme)
         matches = _rank_code_files(code_repo, method_terms) if method_terms else []
-        lines = _code_mapping_lines(code_repo, method_terms, matches)
+        symbol_matches = _rank_python_symbols(code_repo, method_terms) if method_terms else []
+        lines = _code_mapping_lines(code_repo, method_terms, matches, symbol_matches)
         _write_code_mapping_section(code_references_path, lines)
     except Exception as error:
         finish_step(step, "failed", [], str(error))
@@ -189,7 +201,7 @@ def run_code_mapping_evidence(job: ResearchJob, code_repo_path: str | Path | Non
 
     _add_artifact(job, code_references_path)
     output = relative_to_data_dir(code_references_path)
-    if matches:
+    if matches or symbol_matches:
         finish_step(step, "completed", [output])
     else:
         finish_step(step, "partial", [output], "No code files matched method evidence terms")
@@ -340,6 +352,63 @@ def _rank_code_files(code_repo: Path, method_terms: list[str]) -> list[CodeFileM
     return sorted(matches, key=lambda match: (-match.score, match.relative_path))[:MAX_MAPPING_RESULTS]
 
 
+def _rank_python_symbols(code_repo: Path, method_terms: list[str]) -> list[CodeSymbolMatch]:
+    matches: list[CodeSymbolMatch] = []
+    for path in _iter_code_files(code_repo):
+        if path.suffix.lower() != ".py":
+            continue
+        relative_path = path.relative_to(code_repo).as_posix()
+        text = _read_code_text(path)
+        try:
+            tree = ast.parse(text)
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef):
+                symbol_type = "class"
+            elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+                symbol_type = "function"
+            else:
+                continue
+            source = _node_source_text(text, node)
+            searchable = _normalize_search_text(f"{relative_path}\n{node.name}\n{source}")
+            matched_terms = [term for term in method_terms if _term_in_text(term, searchable)]
+            if not matched_terms:
+                continue
+            normalized_symbol = _normalize_search_text(node.name)
+            symbol_bonus = sum(1 for term in matched_terms if _term_in_text(term, normalized_symbol))
+            score = len(matched_terms) * 2 + symbol_bonus
+            matches.append(
+                CodeSymbolMatch(
+                    relative_path=relative_path,
+                    symbol_name=node.name,
+                    symbol_type=symbol_type,
+                    matched_terms=matched_terms,
+                    confidence=_symbol_confidence(len(matched_terms), symbol_bonus),
+                    score=score,
+                )
+            )
+    return sorted(
+        matches,
+        key=lambda match: (-match.score, match.relative_path, match.symbol_type, match.symbol_name),
+    )[:MAX_MAPPING_RESULTS]
+
+
+def _node_source_text(text: str, node: ast.AST) -> str:
+    if not hasattr(node, "lineno") or not hasattr(node, "end_lineno"):
+        return ""
+    lines = text.splitlines()
+    start = max(0, node.lineno - 1)
+    end = min(len(lines), node.end_lineno)
+    return "\n".join(lines[start:end])
+
+
+def _symbol_confidence(matched_count: int, symbol_bonus: int) -> str:
+    if matched_count >= 2 or symbol_bonus > 0:
+        return "medium"
+    return "low"
+
+
 def _iter_code_files(code_repo: Path) -> list[Path]:
     files: list[Path] = []
     for path in sorted(code_repo.rglob("*")):
@@ -396,11 +465,16 @@ def _invalid_repo_lines(code_repo: Path) -> list[str]:
     ]
 
 
-def _code_mapping_lines(code_repo: Path, method_terms: list[str], matches: list[CodeFileMatch]) -> list[str]:
+def _code_mapping_lines(
+    code_repo: Path,
+    method_terms: list[str],
+    matches: list[CodeFileMatch],
+    symbol_matches: list[CodeSymbolMatch],
+) -> list[str]:
     lines = [
         CODE_MAPPING_HEADING,
         "",
-        "- Mapping status: evidence-backed local scan" if matches else "- Mapping status: partial",
+        "- Mapping status: evidence-backed local scan" if matches or symbol_matches else "- Mapping status: partial",
         f"- Local code path: `{code_repo}`",
         "- Clone decision: not cloned by PaperForge; local path supplied by user.",
         "- Method evidence source: `notes/README.md`, Core Method section.",
@@ -447,9 +521,37 @@ def _code_mapping_lines(code_repo: Path, method_terms: list[str], matches: list[
     lines.extend(
         [
             "",
+            "### Candidate Symbols",
+            "",
+        ]
+    )
+    if not symbol_matches:
+        lines.extend(
+            [
+                "- No Python function or class symbols matched the paper-side method terms.",
+                "",
+            ]
+        )
+    else:
+        for index, match in enumerate(symbol_matches, start=1):
+            lines.extend(
+                [
+                    f"{index}. `{match.symbol_name}`",
+                    f"   - File path: `{match.relative_path}`",
+                    f"   - Symbol name: `{match.symbol_name}`",
+                    f"   - Symbol type: {match.symbol_type}",
+                    f"   - Matched method terms: {_term_list(match.matched_terms)}",
+                    f"   - Confidence: {match.confidence}",
+                    "   - Boundary: symbol-level candidate only; confirm manually before treating it as an implementation mapping.",
+                ]
+            )
+
+    lines.extend(
+        [
+            "",
             "### Boundary",
             "",
-            "- This is file-level evidence only; it does not claim line-level implementation mapping.",
+            "- This is candidate evidence only; it does not claim true implementation correspondence.",
             "- Files are ranked by deterministic method-term overlap, not by semantic code understanding.",
         ]
     )

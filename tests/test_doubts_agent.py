@@ -132,7 +132,12 @@ def test_doubts_evidence_writes_questions_from_notes_and_terms(monkeypatch, tmp_
     step = updated.steps[-1]
     assert step.id == "knowledge.write_doubts_evidence"
     assert step.state == "completed"
-    assert step.inputs == ["notes/README.md", "notes/terminology.md", "notes/doubts.md"]
+    assert step.inputs == [
+        "notes/evidence-chunks.md",
+        "notes/README.md",
+        "notes/terminology.md",
+        "notes/doubts.md",
+    ]
     assert step.outputs == ["paper-vault/sample-paper/notes/doubts.md"]
     assert any(
         artifact.kind == "doubts"
@@ -140,6 +145,147 @@ def test_doubts_evidence_writes_questions_from_notes_and_terms(monkeypatch, tmp_
         and artifact.label == "Doubts evidence draft"
         for artifact in updated.artifacts
     )
+
+
+def test_doubts_evidence_prefers_chunks_when_available(monkeypatch, tmp_path):
+    monkeypatch.setenv("PAPERFORGE_DATA_DIR", str(tmp_path))
+    notes_dir = tmp_path / "paper-vault" / "sample-paper" / "notes"
+    notes_dir.mkdir(parents=True)
+    (notes_dir / "README.md").write_text(
+        "\n".join(
+            [
+                "# Sample Paper",
+                "",
+                "## Core Method",
+                "",
+                "- Page 9 method evidence: Unbacked README question should not be used when chunks are available.",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (notes_dir / "evidence-chunks.md").write_text(
+        "\n".join(
+            [
+                "# Evidence Chunks",
+                "",
+                "## Chunk Evidence",
+                "",
+                "### p002-c001",
+                "",
+                "- Page: 2",
+                "- Section guess: method",
+                "- Characters: 86",
+                "",
+                "```text",
+                "Model Architecture uses Scaled Dot-Product Attention in an encoder-decoder model.",
+                "```",
+                "",
+                "### p006-c001",
+                "",
+                "- Page: 6",
+                "- Section guess: experiment",
+                "- Characters: 57",
+                "",
+                "```text",
+                "Table 2 reports BLEU results on translation benchmarks.",
+                "```",
+                "",
+                "### p007-c001",
+                "",
+                "- Page: 7",
+                "- Section guess: limitation",
+                "- Characters: 72",
+                "",
+                "```text",
+                "Future work should test whether the method fails under noisy inputs.",
+                "```",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (notes_dir / "terminology.md").write_text(
+        "\n".join(
+            [
+                "# Terminology",
+                "",
+                "## Scaled Dot-Product Attention",
+                "",
+                "- First seen in: `notes/evidence-chunks.md`, chunk `p002-c001`, page 2; source section: method.",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (notes_dir / "doubts.md").write_text("# Doubts and Follow-up Questions\n", encoding="utf-8")
+
+    updated = doubts_agent.run_doubts_evidence(_job())
+
+    content = (notes_dir / "doubts.md").read_text(encoding="utf-8")
+    assert "- Evidence chunks: [Paragraph evidence chunks](evidence-chunks.md)" in content
+    assert (
+        "- Implementation doubt (source: method, chunk `p002-c001`, page 2): What concrete implementation "
+        "detail is still missing for this method evidence?"
+    ) in content
+    assert (
+        "- Experiment doubt (source: experiment, chunk `p006-c001`, page 6): Which metric, baseline, or setup "
+        "detail must be checked before trusting this result?"
+    ) in content
+    assert (
+        "- Limitation doubt (source: limitation, chunk `p007-c001`, page 7): What condition could make this "
+        "limitation important in practice?"
+    ) in content
+    assert (
+        "- Term question (source: method, chunk `p002-c001`, page 2): What does `Scaled Dot-Product Attention` "
+        "mean in this paper?"
+    ) in content
+    assert "Unbacked README question" not in content
+    assert updated.steps[-1].state == "completed"
+    assert updated.steps[-1].inputs == [
+        "notes/evidence-chunks.md",
+        "notes/README.md",
+        "notes/terminology.md",
+        "notes/doubts.md",
+    ]
+
+
+def test_doubts_evidence_is_partial_when_chunks_have_no_question_sources(monkeypatch, tmp_path):
+    monkeypatch.setenv("PAPERFORGE_DATA_DIR", str(tmp_path))
+    notes_dir = tmp_path / "paper-vault" / "sample-paper" / "notes"
+    notes_dir.mkdir(parents=True)
+    (notes_dir / "evidence-chunks.md").write_text(
+        "\n".join(
+            [
+                "# Evidence Chunks",
+                "",
+                "## Chunk Evidence",
+                "",
+                "### p001-c001",
+                "",
+                "- Page: 1",
+                "- Section guess: introduction",
+                "- Characters: 48",
+                "",
+                "```text",
+                "This introduction provides broad motivation only.",
+                "```",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (notes_dir / "terminology.md").write_text("# Terminology\n", encoding="utf-8")
+    (notes_dir / "doubts.md").write_text("# Doubts and Follow-up Questions\n", encoding="utf-8")
+
+    updated = doubts_agent.run_doubts_evidence(_job())
+
+    assert updated.steps[-1].state == "partial"
+    assert updated.steps[-1].error == "No chunk-backed doubt sources detected"
+    content = (notes_dir / "doubts.md").read_text(encoding="utf-8")
+    assert "Implementation doubt" not in content
+    assert "Experiment doubt" not in content
+    assert "Limitation doubt" not in content
 
 
 def test_doubts_evidence_is_partial_when_inputs_are_missing(monkeypatch, tmp_path):

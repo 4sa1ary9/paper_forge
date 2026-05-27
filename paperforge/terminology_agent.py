@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from paperforge.evidence_retriever import IndexedEvidenceChunk, parse_evidence_chunks
 from paperforge.models import Artifact, ResearchJob
 from paperforge.steps import create_step, finish_step, now_iso, start_step
 from paperforge.storage import get_data_dir, get_paper_vault_dir, relative_to_data_dir, save_job
@@ -21,6 +22,7 @@ class TermCandidate:
     term: str
     section: str
     page: int
+    chunk_id: str | None = None
 
 
 STOP_TERMS = {
@@ -96,6 +98,7 @@ def run_terminology_evidence(job: ResearchJob) -> ResearchJob:
     notes_dir = paper_dir / "notes"
     notes_dir.mkdir(parents=True, exist_ok=True)
     output_path = notes_dir / "terminology.md"
+    chunks_path = notes_dir / "evidence-chunks.md"
     evidence_path = notes_dir / "evidence-map.md"
     readme_path = notes_dir / "README.md"
 
@@ -103,12 +106,15 @@ def run_terminology_evidence(job: ResearchJob) -> ResearchJob:
         create_step(
             "knowledge.write_terminology_evidence",
             "Write terminology evidence draft",
-            ["notes/evidence-map.md", "notes/README.md", "notes/terminology.md"],
+            ["notes/evidence-chunks.md", "notes/evidence-map.md", "notes/README.md", "notes/terminology.md"],
         )
     )
     job.steps.append(step)
 
-    missing_inputs = _missing_inputs([evidence_path, readme_path, output_path])
+    if chunks_path.exists():
+        missing_inputs = _missing_inputs([output_path])
+    else:
+        missing_inputs = _missing_inputs([evidence_path, readme_path, output_path])
     if missing_inputs:
         finish_step(step, "partial", [], f"Missing terminology evidence inputs: {', '.join(missing_inputs)}")
         job.status = "partial"
@@ -117,15 +123,21 @@ def run_terminology_evidence(job: ResearchJob) -> ResearchJob:
         return job
 
     try:
-        evidence_pages = _evidence_page_numbers(evidence_path.read_text(encoding="utf-8"))
-        evidence_lines = [
-            line
-            for line in _readme_evidence_lines(readme_path.read_text(encoding="utf-8"))
-            if line.page in evidence_pages
-        ]
-        terms = _term_candidates(evidence_lines)
+        if chunks_path.exists():
+            chunks = parse_evidence_chunks(chunks_path.read_text(encoding="utf-8"))
+            terms = _chunk_term_candidates(chunks)
+            no_terms_error = "No chunk-backed terminology candidates detected"
+        else:
+            evidence_pages = _evidence_page_numbers(evidence_path.read_text(encoding="utf-8"))
+            evidence_lines = [
+                line
+                for line in _readme_evidence_lines(readme_path.read_text(encoding="utf-8"))
+                if line.page in evidence_pages
+            ]
+            terms = _term_candidates(evidence_lines)
+            no_terms_error = "No page-backed terminology candidates detected"
         if not terms:
-            finish_step(step, "partial", [], "No page-backed terminology candidates detected")
+            finish_step(step, "partial", [], no_terms_error)
             job.status = "partial"
             job.updated_at = now_iso()
             save_job(job)
@@ -182,7 +194,7 @@ def _terminology_evidence_markdown(job: ResearchJob, terms: list[TermCandidate])
         f"- Paper: {metadata.title}",
         "- Draft status: terminology evidence MVP; terms require human review.",
         "- Source note: [Paper note](README.md)",
-        "- Evidence map: [PDF text evidence map](evidence-map.md)",
+        _evidence_source_line(terms),
         "",
     ]
     for term in terms:
@@ -194,12 +206,36 @@ def _terminology_evidence_markdown(job: ResearchJob, terms: list[TermCandidate])
                 f"- Short explanation: Candidate term detected in {term.section} evidence; human explanation required.",
                 f"- Why it matters in this paper: It appears in the cited evidence for {term.section}.",
                 "- Related terms: needs human review",
-                f"- First seen in: `notes/evidence-map.md`, page {term.page}; source section: {term.section}.",
-                f"- Follow-up reading: check `notes/README.md` {term.section} and `notes/evidence-map.md` page {term.page}.",
+                _first_seen_line(term),
+                _follow_up_line(term),
                 "",
             ]
         )
     return "\n".join(lines)
+
+
+def _evidence_source_line(terms: list[TermCandidate]) -> str:
+    if any(term.chunk_id for term in terms):
+        return "- Evidence chunks: [Paragraph evidence chunks](evidence-chunks.md)"
+    return "- Evidence map: [PDF text evidence map](evidence-map.md)"
+
+
+def _first_seen_line(term: TermCandidate) -> str:
+    if term.chunk_id:
+        return (
+            f"- First seen in: `notes/evidence-chunks.md`, chunk `{term.chunk_id}`, "
+            f"page {term.page}; source section: {term.section}."
+        )
+    return f"- First seen in: `notes/evidence-map.md`, page {term.page}; source section: {term.section}."
+
+
+def _follow_up_line(term: TermCandidate) -> str:
+    if term.chunk_id:
+        return (
+            f"- Follow-up reading: check `notes/evidence-chunks.md` chunk `{term.chunk_id}` "
+            f"and page {term.page}."
+        )
+    return f"- Follow-up reading: check `notes/README.md` {term.section} and `notes/evidence-map.md` page {term.page}."
 
 
 def _missing_inputs(paths: list[Path]) -> list[str]:
@@ -240,6 +276,26 @@ def _term_candidates(lines: list[EvidenceLine]) -> list[TermCandidate]:
                 continue
             seen.add(normalized)
             terms.append(TermCandidate(term=term, section=line.section, page=line.page))
+    return terms
+
+
+def _chunk_term_candidates(chunks: list[IndexedEvidenceChunk]) -> list[TermCandidate]:
+    terms: list[TermCandidate] = []
+    seen: set[str] = set()
+    for chunk in chunks:
+        for term in _candidate_terms(chunk.excerpt):
+            normalized = term.lower()
+            if normalized in seen:
+                continue
+            seen.add(normalized)
+            terms.append(
+                TermCandidate(
+                    term=term,
+                    section=chunk.section_guess,
+                    page=chunk.page,
+                    chunk_id=chunk.chunk_id,
+                )
+            )
     return terms
 
 

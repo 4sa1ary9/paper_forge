@@ -24,8 +24,9 @@
 18. 写入保守版深度笔记 MVP，只填充 ready 的 TL;DR、Paper Overview、Background and Motivation、Core Method、Experiments、Limitations、Deep Q&A、Practical Takeaways，并保留页码/图片证据和人工复查标记。
 19. 生成 `notes/ai-paper-reader-prompt.md`，让另一个 Codex 对话读取 `./docs/PAPER_SKILL.md` 和 `ai-paper-reader` skill 后继续写专业阅读笔记。
 20. 在配置 LLM 后，按 `docs/PAPER_SKILL.md` 自动生成 `notes/ai-paper-reader-note.md`，并优先使用 `notes/evidence-chunks.md` 作为证据来源。
-21. 在用户提供本地代码目录后，生成文件级代码映射证据，不自动 clone 第三方仓库。
+21. 在用户提供本地代码目录后，生成文件级和 Python function/class 级代码映射候选，不自动 clone 第三方仓库。
 22. 评估论文作为面试项目素材的适配度，输出 high / medium / low / not recommended、最小 demo 范围和风险边界。
+23. 支持多行论文输入，顺序创建多个 intake jobs，并保存 batch summary。
 
 ## 为什么做这个项目
 
@@ -55,7 +56,7 @@ PaperForge Agent 要解决的是这个完整工作流，而不是单点问答。
 
 ## 当前可运行能力
 
-当前版本已经具备 LLM provider config + query planning + intake + asset collection + source enrichment + PDF image extraction + code linking + note scaffold + terminology scaffold + doubts scaffold + interview mapping scaffold + package validation + PDF text evidence extraction + paragraph / chunk evidence extraction + local evidence search + deep note planning + conservative deep note writing MVP + ai-paper-reader prompt pack + chunk-grounded ai-paper-reader note generation + terminology evidence MVP + doubts evidence MVP + code mapping evidence MVP + interview project assessment MVP 的最小闭环：
+当前版本已经具备 LLM provider config + query planning + intake + batch intake + asset collection + source enrichment + PDF image extraction + code linking + note scaffold + terminology scaffold + doubts scaffold + interview mapping scaffold + package validation + PDF text evidence extraction + paragraph / chunk evidence extraction + local evidence search + deep note planning + conservative deep note writing MVP + ai-paper-reader prompt pack + chunk-grounded ai-paper-reader note generation + chunk-aware terminology evidence MVP + chunk-aware doubts evidence MVP + function-level code mapping evidence MVP + interview project assessment MVP 的最小闭环：
 
 1. 输入论文标题、arXiv ID 或 URL。
 2. Query Planner 先生成 canonical title / search query，并把规划结果写入 `notes/query-plan.md`；arXiv ID、arXiv URL 和 PDF URL 不改写。
@@ -80,13 +81,14 @@ PaperForge Agent 要解决的是这个完整工作流，而不是单点问答。
 21. Deep Note Writer Agent 更新 `notes/README.md` 中 ready 的 TL;DR、Paper Overview、Background and Motivation、Core Method、Experiments、Limitations、Deep Q&A、Practical Takeaways，写入带页码/图片证据的保守草稿。
 22. AI Paper Reader Prompt Pack 生成 `notes/ai-paper-reader-prompt.md`，明确要求另一个 Codex 对话读取 `./docs/PAPER_SKILL.md` 和 canonical skill 路径。
 23. AI Paper Reader Note Writer 使用 OpenAI-compatible LLM 生成 `notes/ai-paper-reader-note.md`，优先读取 `notes/evidence-chunks.md` 的 chunk excerpt，缺失时 fallback 到 `notes/evidence-map.md`，同时保存 `notes/ai-paper-reader-generation-prompt.md` 方便复盘。
-24. Terminology Agent 更新 `notes/terminology.md`，只写入有页码证据的术语候选和人工复查标记。
-25. Doubts Agent 更新 `notes/doubts.md`，从主笔记证据草稿和术语条目派生带来源页码的疑难点候选。
-26. Code Mapping Agent 在用户提供本地代码仓库路径后扫描代码文件，把 Core Method 证据词映射到候选代码路径，并更新 `notes/code-references.md`。
+24. Terminology Agent 更新 `notes/terminology.md`，优先从 `notes/evidence-chunks.md` 抽取术语候选并保留 chunk id/page；chunks 缺失时 fallback 到页码证据。
+25. Doubts Agent 更新 `notes/doubts.md`，优先从 method / experiment / limitation chunks 派生疑难点候选并保留 chunk id/page；chunks 缺失时 fallback 到主笔记证据草稿和术语条目。
+26. Code Mapping Agent 在用户提供本地代码仓库路径后扫描代码文件，把 Core Method 证据词映射到候选代码路径和 Python function/class symbol，并更新 `notes/code-references.md`。
 27. Interview Mapper Agent 更新 `notes/interview-project.md`，基于主笔记、代码映射和疑难点输出保守适配度评估、最小 demo 范围和风险。
 28. Streamlit 页面展示论文摘要、任务状态、agent timeline 和 artifact 列表。
+29. Batch Runner 支持多行输入，顺序调用 intake，保存 `.paperforge-data/batches/<batch-id>.json` 和 batch summary。
 
-当前接续点：核心 MVP、Extension 0、LLM 执行层、段落级 evidence chunks、本地 evidence search 和 ai-paper-reader chunk evidence 接入已完成。下一步建议让 terminology / doubts 优先使用 `notes/evidence-chunks.md`。详见 [扩展路线图](docs/EXTENSION_ROADMAP.md)。
+当前接续点：核心 MVP、Extension 0、LLM 执行层、段落级 evidence chunks、本地 evidence search、ai-paper-reader chunk evidence 接入、terminology / doubts chunk evidence 接入、function-level code mapping MVP 和多篇论文批处理 MVP 已完成。后续建议先做真实样例验证、demo 整理或再选择语义 / 向量检索等可选扩展。详见 [扩展路线图](docs/EXTENSION_ROADMAP.md)。
 
 ## 项目结构
 
@@ -98,6 +100,7 @@ PaperForge-Agent/
 │   ├── ai_paper_reader_note.py      # LLM-backed ai-paper-reader note generation
 │   ├── ai_paper_reader_prompt.py    # ai-paper-reader Codex handoff prompt
 │   ├── asset_collector.py           # PDF / TeX Source 下载和解压
+│   ├── batch_runner.py              # 多篇论文顺序 intake
 │   ├── code_linker.py               # GitHub 候选仓库整理和本地代码映射证据
 │   ├── deep_note_planner.py          # 深度笔记准备度计划
 │   ├── deep_note_writer.py           # 保守版深度笔记 MVP

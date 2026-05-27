@@ -27,7 +27,7 @@ PaperForge Agent 把一个论文输入转换成一个完整研究包。
 
 ## 1.1 当前实现边界
 
-截至 Step 28，当前 Python 版已经跑通的是 **LLM provider config + query planning + scaffold research package + PDF text evidence map + paragraph / chunk evidence map + local evidence search MVP + deep note readiness gate + conservative deep note writing MVP + ai-paper-reader prompt pack + chunk-grounded ai-paper-reader note generation + terminology evidence MVP + doubts evidence MVP + code mapping evidence MVP + interview project assessment MVP**，不是最终深度研究包。
+截至 Step 31，当前 Python 版已经跑通的是 **LLM provider config + query planning + scaffold research package + PDF text evidence map + paragraph / chunk evidence map + local evidence search MVP + deep note readiness gate + conservative deep note writing MVP + ai-paper-reader prompt pack + chunk-grounded ai-paper-reader note generation + chunk-aware terminology evidence MVP + chunk-aware doubts evidence MVP + function-level code mapping evidence MVP + interview project assessment MVP + multi-paper batch intake MVP**，不是最终深度研究包。
 
 已经实现：
 
@@ -46,10 +46,11 @@ PaperForge Agent 把一个论文输入转换成一个完整研究包。
 - 保守版深度笔记 MVP，只写入 ready 的 TL;DR、Paper Overview、Background and Motivation、Core Method、Experiments、Limitations、Deep Q&A、Practical Takeaways，并保留页码/图片证据和人工复查标记。
 - ai-paper-reader Prompt Pack：生成 `notes/ai-paper-reader-prompt.md`，让另一个 Codex 对话读取 `./docs/PAPER_SKILL.md` 和 canonical skill 路径后继续写专业阅读笔记。
 - ai-paper-reader Note Generation：配置 LLM 后读取 `docs/PAPER_SKILL.md` 和当前 job artifacts，优先使用 `notes/evidence-chunks.md`，生成 `notes/ai-paper-reader-note.md` 并保存生成 prompt。
-- 术语证据 MVP，只从 README 页码证据行中抽取有 evidence-map 页码支撑的候选术语，保留 first seen page、来源章节和人工复查标记。
-- 疑难点证据 MVP，只从 README 证据草稿、Deep Q&A 已有问题和 terminology first-seen 条目派生疑难点候选，保留来源章节、page evidence 和人工复查标记。
-- 代码映射证据 MVP，在用户提供本地代码目录后，按 Core Method 方法词重合度生成文件级候选映射，不自动 clone。
+- 术语证据 MVP，优先从 `notes/evidence-chunks.md` 抽取候选术语，保留 chunk id、page、来源章节和人工复查标记；chunks 缺失时 fallback 到 README 页码证据行。
+- 疑难点证据 MVP，优先从 method / experiment / limitation chunks 和 chunk-backed terminology 条目派生疑难点候选，保留 chunk id、page 和人工复查标记；chunks 缺失时 fallback 到 README 证据草稿、Deep Q&A 和 terminology first-seen 条目。
+- 代码映射证据 MVP，在用户提供本地代码目录后，按 Core Method 方法词重合度生成文件级和 Python function/class 级候选映射，不自动 clone。
 - 面试项目适配度评估 MVP，基于主笔记、代码映射和疑难点信号输出 high / medium / low / not recommended、最小 demo 范围和风险边界。
+- 多篇论文批处理 MVP，支持多行输入顺序创建多个 intake jobs，单篇失败不阻塞后续输入。
 
 尚未实现：
 
@@ -61,8 +62,8 @@ PaperForge Agent 把一个论文输入转换成一个完整研究包。
 - 方法到代码的行级或语义级真实映射；
 - 完整项目方案生成；
 - 语义 / 向量检索；
-- terminology / doubts 的 chunk-grounded evidence 派生；
-- 多篇论文批处理。
+- 多篇论文批处理；
+- 跨论文综述总结。
 
 因此后续实现时，应把当前版本视为 **可运行的 scaffold MVP**，不要把 scaffold 文件当成已完成的深度内容。
 
@@ -119,6 +120,36 @@ PaperForge Agent 把一个论文输入转换成一个完整研究包。
 - 第一版提供 `QueryPlannerClient` 可注入接口；配置 `PAPERFORGE_LLM_BASE_URL`、`PAPERFORGE_LLM_API_KEY` 和 `PAPERFORGE_QUERY_MODEL` 后，默认使用 OpenAI-compatible LLM client。
 - fake LLM 或真实 LLM 返回合法 JSON 时使用其 canonical title / search query，坏 JSON、空响应或异常时 fallback 到原始输入或别名表。
 - Streamlit intake 区域提供 `Use LLM query planner` 复选框；未配置真实 client 时仍可使用别名表和 fallback。
+
+## 2.1 多篇论文批处理流程
+
+### 输出
+
+```text
+.paperforge-data/batches/<batch-id>.json
+.paperforge-data/batches/<batch-id>-summary.md
+```
+
+### 当前 Batch Runner MVP
+
+当前 Python MVP 已做多篇论文批处理：
+
+- 新增 `paperforge/batch_runner.py`；
+- 输入多行论文标题、arXiv ID 或 URL；
+- 空行会跳过；
+- 每一行顺序调用现有 `run_paper_intake`；
+- 单篇失败时记录错误，不阻塞后续论文；
+- batch JSON 记录 batch id、创建时间、总输入数、每篇输入、job id、slug、status 和错误；
+- batch summary Markdown 记录同样信息，方便人工查看；
+- Streamlit 页面提供 `Batch Intake` 多行输入框和 `Run Batch Intake` 按钮。
+
+### 规则
+
+- 第一版只做顺序 intake，不做并发；
+- 第一版不下载资产、不跑完整 pipeline；
+- 第一版不做跨论文综述总结；
+- 失败项必须保留输入和错误信息，便于用户重试；
+- batch 产物保存在 `.paperforge-data/batches/`，不进入 git。
 
 ## 3. 原始资产收集流程
 
@@ -255,9 +286,13 @@ notes/external-sources.md
 - 不自动 clone，不读取远端仓库；
 - 从 `notes/README.md` 的 Core Method 章节提取方法证据词；
 - 在本地代码目录中按文件路径和内容的方法词重合度生成候选代码路径；
+- 对 Python 文件使用 AST 识别 function 和 class symbol；
+- symbol-level candidate 输出 file path、symbol name、symbol type、matched terms 和 confidence；
+- symbol confidence 只表示词面候选强弱，不代表真实实现对应；
+- 继续过滤 `.venv`、`node_modules`、`.git`、`dist`、`build`、`__pycache__` 等目录；
 - 更新 `notes/code-references.md` 的 `Code Mapping Evidence` 章节；
 - 缺少本地代码路径时将 step 标记为 `needs_user_input`；
-- 输出保持文件级候选，不声明行级实现映射。
+- 输出保持 candidate，不声明行级实现映射或真实实现对应。
 
 ### 目标目录
 
@@ -574,11 +609,13 @@ notes/terminology.md
 
 当前 Python MVP 已做 Terminology Evidence MVP：
 
-- 读取 `notes/evidence-map.md`、`notes/README.md` 和 `notes/terminology.md`；
-- 只从 README 中 `Page N ... evidence` 格式的证据行抽取候选术语；
-- 用 evidence map 校验 page evidence 存在，避免写入无页码支撑的术语；
+- 优先读取 `notes/evidence-chunks.md` 和 `notes/terminology.md`；
+- chunks 存在时只从 chunk excerpt 抽取候选术语；
+- 每个 chunk-backed 术语保留 chunk id、page 和 section guess；
+- chunks 缺失时 fallback 到 `notes/evidence-map.md`、`notes/README.md` 和旧页码证据逻辑；
+- fallback 逻辑用 evidence map 校验 page evidence 存在，避免写入无页码支撑的术语；
 - 更新 `notes/terminology.md`；
-- 每个候选术语保留来源章节、first seen page 和 follow-up reading；
+- 每个候选术语保留来源章节、first seen page/chunk 和 follow-up reading；
 - 明确标注 `Draft status: terminology evidence MVP; terms require human review.`；
 - 不生成完整术语解释，不从标题或摘要机械列词。
 
@@ -627,10 +664,14 @@ notes/doubts.md
 
 当前 Python MVP 已做 Doubts Evidence MVP：
 
-- 读取 `notes/README.md`、`notes/terminology.md` 和 `notes/doubts.md`；
-- 从 README 的 `Page N ... evidence` 行读取 Core Method、Experiments 和 Limitations 证据；
-- 从 README 的 Deep Q&A 章节复用已有来源问题；
-- 从 terminology first-seen 条目生成术语 follow-up question；
+- 优先读取 `notes/evidence-chunks.md`、`notes/terminology.md` 和 `notes/doubts.md`；
+- chunks 存在时从 method、experiment、limitation chunks 派生疑难点候选；
+- chunks 存在时只复用 chunk-backed terminology first-seen 条目生成术语 follow-up question；
+- 每个 chunk-backed 疑难点保留 chunk id 和 page；
+- chunks 缺失时 fallback 到 `notes/README.md`、`notes/terminology.md` 和旧页码证据逻辑；
+- fallback 逻辑从 README 的 `Page N ... evidence` 行读取 Core Method、Experiments 和 Limitations 证据；
+- fallback 逻辑从 README 的 Deep Q&A 章节复用已有来源问题；
+- fallback 逻辑从 terminology first-seen 条目生成术语 follow-up question；
 - 更新 `notes/doubts.md`；
 - 明确标注 `Draft status: doubts evidence MVP; questions require human review.`；
 - 不直接从 PDF 泛泛生成开放问题，不把候选问题包装成最终疑难点分析。
@@ -812,4 +853,4 @@ Streamlit 工作台应该把 timeline 渲染成可视化 plan 或任务时间线
 - `notes/evidence-chunks.md` 存在，并提供 paragraph / chunk 级文本证据入口。
 - `notes/deep-note-plan.md` 存在，并清楚列出各主笔记章节的生成准备度。
 
-当前 Step 28 满足 LLM provider config、query planning、文件存在性、页码级文本证据、paragraph / chunk 级文本证据、本地 evidence search、深度笔记准备度计划，TL;DR / Paper Overview / Background and Motivation / Core Method / Experiments / Limitations / Deep Q&A / Practical Takeaways 的保守证据草稿、ai-paper-reader prompt pack、chunk-grounded ai-paper-reader note generation、有页码证据的术语候选、从证据草稿派生的疑难点候选、本地代码目录的文件级代码映射候选，以及面试项目适配度评估；完整方法解释、实验深度解读、完整术语解释、完整疑难点分析、terminology / doubts 的 chunk-grounded evidence 派生、语义/向量检索、行级代码方法映射和完整项目方案仍未满足。
+当前 Step 31 满足 LLM provider config、query planning、文件存在性、页码级文本证据、paragraph / chunk 级文本证据、本地 evidence search、深度笔记准备度计划，TL;DR / Paper Overview / Background and Motivation / Core Method / Experiments / Limitations / Deep Q&A / Practical Takeaways 的保守证据草稿、ai-paper-reader prompt pack、chunk-grounded ai-paper-reader note generation、带 chunk/page 证据的术语候选、带 chunk/page 证据的疑难点候选、本地代码目录的文件级和 Python function/class 级代码映射候选、面试项目适配度评估，以及多篇论文顺序 intake；完整方法解释、实验深度解读、完整术语解释、完整疑难点分析、语义/向量检索、line-level 代码方法映射、跨论文综述总结和完整项目方案仍未满足。

@@ -8,6 +8,7 @@ import streamlit as st
 from paperforge.ai_paper_reader_prompt import run_ai_paper_reader_prompt_pack
 from paperforge.ai_paper_reader_note import run_ai_paper_reader_note_generation
 from paperforge.asset_collector import run_asset_collection
+from paperforge.batch_runner import run_batch_intake
 from paperforge.code_linker import run_code_linking, run_code_mapping_evidence
 from paperforge.deep_note_planner import run_deep_note_planning
 from paperforge.deep_note_writer import run_deep_note_writing
@@ -43,7 +44,7 @@ def main() -> None:
         st.header("Workflow")
         st.markdown(
             """
-            1. 输入论文标题或 arXiv 链接
+            1. 输入单篇论文，或用 Batch Intake 输入多行论文
             2. Query Planner 规划论文身份
             3. Agent 解析论文身份
             4. 创建 paper workspace
@@ -88,6 +89,27 @@ def main() -> None:
             st.session_state["active_job_id"] = job.id
         else:
             st.warning("请输入论文标题、arXiv ID 或 URL。")
+
+    batch_input = st.text_area(
+        "Batch Intake（可选，每行一篇论文）",
+        value="",
+        height=100,
+    )
+    if st.button("Run Batch Intake"):
+        if batch_input.strip():
+            with st.spinner("Batch Intake 正在顺序创建多个研究任务..."):
+                batch = run_batch_intake(batch_input, use_query_planner=use_query_planner)
+            if batch.status == "completed":
+                st.success(f"Batch intake completed: {batch.total_inputs} papers")
+            else:
+                st.warning(f"Batch intake finished with status: {batch.status}")
+            st.code(str(batch.json_path), language="text")
+            st.code(str(batch.summary_path), language="text")
+            first_job_id = next((item.job_id for item in batch.items if item.job_id), None)
+            if first_job_id:
+                st.session_state["active_job_id"] = first_job_id
+        else:
+            st.warning("请输入至少一行论文标题、arXiv ID 或 URL。")
 
     jobs = list_jobs()
     if not jobs:

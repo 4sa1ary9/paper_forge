@@ -3482,3 +3482,311 @@ notes/evidence-chunks.md
   -> terminology candidates with chunk id + page
   -> doubts candidates with chunk id + page
 ```
+
+## Step 29: Terminology / Doubts 使用 Evidence Chunks
+
+### 目标
+
+让术语候选和疑难点候选优先使用 Step 26 产出的 `notes/evidence-chunks.md`：
+
+```text
+notes/evidence-chunks.md
+  -> notes/terminology.md with chunk id + page
+  -> notes/doubts.md with chunk id + page
+```
+
+本阶段不生成完整术语解释，不生成完整疑难点分析，只把 evidence source 从粗页码优先升级为 chunk id/page 优先。
+
+### 为什么这样做
+
+Step 28 已经让 ai-paper-reader note generation 优先携带 chunk evidence，但 terminology 和 doubts 仍主要从 README 的页码证据行派生。这样来源粒度不够细，也不利于后续 RAG 或人工复查。Step 29 保持原有 fallback，同时在 chunks 存在时改用更精确来源：
+
+- terminology 从 chunk excerpt 抽取候选术语；
+- doubts 从 method、experiment、limitation chunks 派生问题；
+- 每条 chunk-backed 输出保留 chunk id 和 page；
+- chunks 缺失时旧的 README + evidence-map 逻辑仍可用。
+
+### 已完成文件
+
+修改核心模块：
+
+- `paperforge/terminology_agent.py`
+- `paperforge/doubts_agent.py`
+
+更新测试：
+
+- `tests/test_terminology_agent.py`
+- `tests/test_doubts_agent.py`
+
+更新文档：
+
+- `README.md`
+- `docs/PROGRESS.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/EXTENSION_ROADMAP.md`
+- `docs/STATUS_REVIEW.md`
+- `docs/DOCUMENTATION_GUIDE.md`
+- `docs/BUILD_STEPS.md`
+
+### 当前能力
+
+已支持：
+
+- `notes/evidence-chunks.md` 存在时，Terminology Agent 只从 chunk excerpt 抽取候选术语；
+- terminology 输出 `notes/evidence-chunks.md`、chunk id、page 和 section guess；
+- `notes/evidence-chunks.md` 缺失时，Terminology Agent fallback 到旧的 README + evidence-map 页码证据逻辑；
+- `notes/evidence-chunks.md` 存在时，Doubts Agent 从 method、experiment、limitation chunks 派生 implementation / experiment / limitation questions；
+- Doubts Agent 复用 chunk-backed terminology 条目生成术语 follow-up question；
+- doubts 输出 chunk id 和 page；
+- chunks 存在但没有可用术语或疑难点来源时返回 `partial`，不写入无 evidence 的候选；
+- Streamlit 现有 `Write Terminology Evidence` 和 `Write Doubts Evidence` 按钮可直接复用。
+
+### 验证方式
+
+运行测试：
+
+```powershell
+uv run python -m pytest
+```
+
+运行编译检查：
+
+```powershell
+uv run python -m compileall app.py paperforge tests scripts
+```
+
+运行 diff 空白检查：
+
+```powershell
+git diff --check
+```
+
+当前验证结果：
+
+```text
+pytest: 87 passed
+compileall: app.py paperforge tests scripts passed
+git diff --check: passed
+```
+
+### 这一阶段没有做什么
+
+- 没有生成完整术语解释；
+- 没有生成完整疑难点分析；
+- 没有使用 LLM 生成 terminology/doubts；
+- 没有引入 embedding 或向量数据库；
+- 没有修改 code mapping 逻辑。
+
+### 下一步建议
+
+下一步建议做 **Step 30: Code Mapping Function-level MVP**：
+
+```text
+local code repo path
+  -> scan Python function / class symbols
+  -> notes/code-references.md symbol-level candidates
+```
+
+## Step 30: Code Mapping Function-level MVP
+
+### 目标
+
+在现有文件级代码映射基础上，增加 Python function / class 级候选映射：
+
+```text
+local code repo path + notes/README.md Core Method evidence
+  -> scan Python functions/classes
+  -> notes/code-references.md symbol-level candidates
+```
+
+本阶段仍然要求用户提供本地代码仓库路径；不自动 clone，不做语义理解，不声明真实实现对应。
+
+### 为什么这样做
+
+Step 22 的 code mapping 只能输出候选文件。对阅读论文和准备项目来说，文件级候选仍然偏粗；如果能标出可能相关的 Python function / class，用户可以更快进入人工复查。Step 30 选择 AST 解析 Python 文件，而不是字符串猜测或引入复杂依赖：
+
+- 只扫描本地用户提供的 repo；
+- 只识别 Python function / class symbol；
+- 仍基于 Core Method 方法词做确定性匹配；
+- confidence 只表示词面候选强弱；
+- 输出明确标记为 candidate，不承诺真实实现对应。
+
+### 已完成文件
+
+修改核心模块：
+
+- `paperforge/code_linker.py`
+
+更新测试：
+
+- `tests/test_code_linker.py`
+
+更新文档：
+
+- `README.md`
+- `docs/PROGRESS.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/EXTENSION_ROADMAP.md`
+- `docs/STATUS_REVIEW.md`
+- `docs/DOCUMENTATION_GUIDE.md`
+- `docs/BUILD_STEPS.md`
+
+### 当前能力
+
+已支持：
+
+- 在用户提供本地代码仓库路径后扫描代码；
+- 对 Python 文件使用 `ast` 识别 `class`、`def` 和 `async def`；
+- 输出 symbol-level candidate，包含 file path、symbol name、symbol type、matched terms 和 confidence；
+- 同时保留原有文件级 candidate；
+- confidence 只分 `low` / `medium`，不伪装成真实语义匹配；
+- 继续过滤 `.venv`、`venv`、`node_modules`、`.git`、`dist`、`build`、`__pycache__` 等目录；
+- 缺少本地 repo 路径时仍返回 `needs_user_input`；
+- Streamlit 现有 `Write Code Mapping Evidence` 按钮可复用。
+
+### 验证方式
+
+运行测试：
+
+```powershell
+uv run python -m pytest
+```
+
+运行编译检查：
+
+```powershell
+uv run python -m compileall app.py paperforge tests scripts
+```
+
+运行 diff 空白检查：
+
+```powershell
+git diff --check
+```
+
+当前验证结果：
+
+```text
+pytest: 88 passed
+compileall: app.py paperforge tests scripts passed
+git diff --check: passed
+```
+
+### 这一阶段没有做什么
+
+- 没有自动 clone 仓库；
+- 没有扫描远端 GitHub；
+- 没有做 line-level mapping；
+- 没有做语义代码理解；
+- 没有把 symbol candidate 包装成真实论文实现对应。
+
+### 下一步建议
+
+下一步建议做 **Step 31: 多篇论文批处理 MVP**：
+
+```text
+multi-line paper inputs
+  -> sequential run_paper_intake
+  -> .paperforge-data/batches/<batch-id>.json
+```
+
+## Step 31: 多篇论文批处理 MVP
+
+### 目标
+
+支持用户输入多行论文标题、arXiv ID 或 URL，顺序创建多个 intake jobs：
+
+```text
+multi-line paper inputs
+  -> sequential run_paper_intake
+  -> .paperforge-data/batches/<batch-id>.json
+  -> .paperforge-data/batches/<batch-id>-summary.md
+```
+
+本阶段只做 batch intake，不做并发、不下载资产、不做跨论文综述总结。
+
+### 为什么这样做
+
+前面阶段已经把单篇论文 research package 的主要 scaffold 和 evidence workflow 跑通。多篇论文批处理的第一步不应该直接做综述或跨论文 RAG，而是先解决“多行输入顺序创建多个 jobs，并记录每篇状态”：
+
+- 批处理失败项不能阻塞后续论文；
+- batch summary 要能帮助用户重试失败项；
+- 所有生成数据继续放在 `.paperforge-data/`；
+- 不引入数据库或调度系统。
+
+### 已完成文件
+
+新增核心模块：
+
+- `paperforge/batch_runner.py`
+
+修改工作台：
+
+- `app.py`
+
+新增测试：
+
+- `tests/test_batch_runner.py`
+
+更新文档：
+
+- `README.md`
+- `docs/PROGRESS.md`
+- `docs/WORKFLOW_SPEC.md`
+- `docs/EXTENSION_ROADMAP.md`
+- `docs/STATUS_REVIEW.md`
+- `docs/DOCUMENTATION_GUIDE.md`
+- `docs/BUILD_STEPS.md`
+
+### 当前能力
+
+已支持：
+
+- 多行论文输入；
+- 空行跳过；
+- 每行顺序调用现有 `run_paper_intake`；
+- 单篇异常会记录为 failed，并继续处理后续输入；
+- batch JSON 记录 batch id、created_at、status、total_inputs 和每篇 input/job id/slug/status/error；
+- batch Markdown summary 保存同样信息，方便人工查看；
+- 空输入返回 `needs_user_input`；
+- Streamlit 增加 Batch Intake 区域和 `Run Batch Intake` 按钮。
+
+### 验证方式
+
+运行测试：
+
+```powershell
+uv run python -m pytest
+```
+
+运行编译检查：
+
+```powershell
+uv run python -m compileall app.py paperforge tests scripts
+```
+
+运行 diff 空白检查：
+
+```powershell
+git diff --check
+```
+
+当前验证结果：
+
+```text
+pytest: 92 passed
+compileall: app.py paperforge tests scripts passed
+git diff --check: passed
+```
+
+### 这一阶段没有做什么
+
+- 没有并发；
+- 没有批量下载 PDF/TeX；
+- 没有跨论文总结；
+- 没有引入数据库；
+- 没有改变单篇 intake 行为。
+
+### 后续建议
+
+当前 Step 26-31 请求清单已完成。下一轮建议先做真实样例验证、demo script / evaluation 文档，或者重新确认是否进入语义 / 向量检索扩展。

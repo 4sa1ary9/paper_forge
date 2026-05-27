@@ -106,7 +106,12 @@ def test_terminology_evidence_writes_only_page_backed_terms(monkeypatch, tmp_pat
     step = updated.steps[-1]
     assert step.id == "knowledge.write_terminology_evidence"
     assert step.state == "completed"
-    assert step.inputs == ["notes/evidence-map.md", "notes/README.md", "notes/terminology.md"]
+    assert step.inputs == [
+        "notes/evidence-chunks.md",
+        "notes/evidence-map.md",
+        "notes/README.md",
+        "notes/terminology.md",
+    ]
     assert step.outputs == ["paper-vault/sample-paper/notes/terminology.md"]
     assert any(
         artifact.kind == "terminology"
@@ -114,6 +119,113 @@ def test_terminology_evidence_writes_only_page_backed_terms(monkeypatch, tmp_pat
         and artifact.label == "Terminology evidence draft"
         for artifact in updated.artifacts
     )
+
+
+def test_terminology_evidence_prefers_chunks_when_available(monkeypatch, tmp_path):
+    monkeypatch.setenv("PAPERFORGE_DATA_DIR", str(tmp_path))
+    notes_dir = tmp_path / "paper-vault" / "sample-paper" / "notes"
+    notes_dir.mkdir(parents=True)
+    (notes_dir / "README.md").write_text(
+        "\n".join(
+            [
+                "# Sample Paper",
+                "",
+                "## Core Method",
+                "",
+                "- Page 9 method evidence: Unbacked README Term should not be used when chunks are available.",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (notes_dir / "evidence-map.md").write_text(
+        "# PDF Text Evidence Map\n\n### Page 9\n\n```text\nUnbacked README Term\n```\n",
+        encoding="utf-8",
+    )
+    (notes_dir / "evidence-chunks.md").write_text(
+        "\n".join(
+            [
+                "# Evidence Chunks",
+                "",
+                "## Chunk Evidence",
+                "",
+                "### p002-c001",
+                "",
+                "- Page: 2",
+                "- Section guess: method",
+                "- Characters: 86",
+                "",
+                "```text",
+                "Model Architecture uses Scaled Dot-Product Attention in an encoder-decoder model.",
+                "```",
+                "",
+                "### p006-c001",
+                "",
+                "- Page: 6",
+                "- Section guess: experiment",
+                "- Characters: 57",
+                "",
+                "```text",
+                "Table 2 reports BLEU results on translation benchmarks.",
+                "```",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (notes_dir / "terminology.md").write_text("# Terminology\n", encoding="utf-8")
+
+    updated = terminology_agent.run_terminology_evidence(_job())
+
+    content = (notes_dir / "terminology.md").read_text(encoding="utf-8")
+    assert "- Evidence chunks: [Paragraph evidence chunks](evidence-chunks.md)" in content
+    assert "## Scaled Dot-Product Attention" in content
+    assert "## BLEU" in content
+    assert "- First seen in: `notes/evidence-chunks.md`, chunk `p002-c001`, page 2; source section: method." in content
+    assert "- First seen in: `notes/evidence-chunks.md`, chunk `p006-c001`, page 6; source section: experiment." in content
+    assert "Unbacked README Term" not in content
+    assert updated.steps[-1].state == "completed"
+    assert updated.steps[-1].inputs == [
+        "notes/evidence-chunks.md",
+        "notes/evidence-map.md",
+        "notes/README.md",
+        "notes/terminology.md",
+    ]
+
+
+def test_terminology_evidence_is_partial_when_chunks_have_no_terms(monkeypatch, tmp_path):
+    monkeypatch.setenv("PAPERFORGE_DATA_DIR", str(tmp_path))
+    notes_dir = tmp_path / "paper-vault" / "sample-paper" / "notes"
+    notes_dir.mkdir(parents=True)
+    (notes_dir / "evidence-chunks.md").write_text(
+        "\n".join(
+            [
+                "# Evidence Chunks",
+                "",
+                "## Chunk Evidence",
+                "",
+                "### p001-c001",
+                "",
+                "- Page: 1",
+                "- Section guess: introduction",
+                "- Characters: 41",
+                "",
+                "```text",
+                "the paper describes a simple and broad idea",
+                "```",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (notes_dir / "terminology.md").write_text("# Terminology\n", encoding="utf-8")
+
+    updated = terminology_agent.run_terminology_evidence(_job())
+
+    assert updated.steps[-1].state == "partial"
+    assert updated.steps[-1].error == "No chunk-backed terminology candidates detected"
+    content = (notes_dir / "terminology.md").read_text(encoding="utf-8")
+    assert "evidence-backed candidate" not in content
 
 
 def test_terminology_evidence_is_partial_when_inputs_are_missing(monkeypatch, tmp_path):

@@ -134,18 +134,36 @@ def step_state(job: ResearchJob, step_key: str) -> str:
 
 
 def is_step_available(job: ResearchJob, action: ActionStep) -> bool:
-    """Check if a step can be run now."""
+    """Check if a step can be run now based on prerequisites."""
     if action.requires_metadata and job.metadata is None:
         return False
-    # Each phase needs the first step of the previous phase to be completed
+
+    # Per-action prerequisites (more specific than phase-level)
+    action_prereqs: dict[str, str] = {
+        "extract_images": "collect_assets",   # needs PDF
+        "extract_text": "collect_assets",      # needs PDF
+        "extract_chunks": "extract_text",      # needs evidence map
+        "search_evidence": "extract_chunks",   # needs evidence chunks
+        "write_deep_note": "plan_deep_note",   # needs readiness plan
+        "generate_reader_note": "prepare_reader_prompt",  # needs prompt pack
+        "write_terminology_evidence": "extract_chunks",
+        "write_doubts_evidence": "write_terminology_evidence",
+        "assess_interview": "write_deep_note",
+        "write_code_mapping": "link_code",
+    }
+    prereq = action_prereqs.get(action.key)
+    if prereq and step_state(job, prereq) not in ("completed", "partial"):
+        return False
+
+    # Phase-level prerequisites
     phase_prereqs = {
         2: "intake",
-        3: "write_note",  # can start after note scaffold
+        3: "write_note",
         4: "collect_assets",
         5: "extract_text",
     }
-    prereq = phase_prereqs.get(action.phase)
-    if prereq and step_state(job, prereq) not in ("completed", "partial"):
+    phase_prereq = phase_prereqs.get(action.phase)
+    if phase_prereq and step_state(job, phase_prereq) not in ("completed", "partial"):
         return False
     return True
 

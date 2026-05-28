@@ -127,6 +127,31 @@ PaperForge-Agent/
 └── .paperforge-data/              # 本地生成数据，不进入 git
 ```
 
+## 快速开始
+
+**环境要求：Python >= 3.13**
+
+```powershell
+# 1. 克隆项目
+git clone https://github.com/4sa1ary9/paper_forge.git
+cd paper_forge
+
+# 2. 安装依赖
+uv venv --prompt agent .venv
+uv sync
+
+# 3. 复制环境变量模板（LLM 配置可选）
+cp .env.example .env
+
+# 4. 直接运行完整流水线（无需 LLM API key）
+uv run python scripts/run_pipeline.py "https://arxiv.org/abs/2006.11239"
+
+# 5. 或启动 Streamlit 界面
+uv run streamlit run app.py
+```
+
+**无需 API Key 即可使用：** 流水线 19 个阶段中，只有 `ai-paper-reader note` 生成需要 LLM，其余所有阶段（论文解析、PDF 下载、图片提取、笔记骨架、证据提取与检索、深度笔记 MVP 等）都是本地运行，不依赖任何外部 API。
+
 ## 本地运行
 
 项目用 uv 管理依赖。虚拟环境目录是 `.venv/`，激活后显示 `(agent)`。
@@ -142,10 +167,29 @@ Git Bash 激活：
 source .venv/Scripts/activate
 ```
 
-启动应用：
+### Streamlit 界面
 
 ```powershell
 uv run streamlit run app.py
+```
+
+界面按 5 个阶段组织：Intake → Assets → Scaffolds → Evidence → Deep Generation，每个阶段的按钮只有当前置条件满足时才会启用。
+
+### 命令行流水线
+
+```powershell
+# 使用默认论文（DDPM）
+uv run python scripts/run_pipeline.py
+
+# 指定论文
+uv run python scripts/run_pipeline.py "https://arxiv.org/abs/1706.03762"
+
+# 附带外部资料 URL
+uv run python scripts/run_pipeline.py "https://arxiv.org/abs/2006.11239" "https://github.com/hojonathanho/diffusion"
+
+# 指定本地代码仓库用于代码映射
+$env:PAPERFORGE_CODE_REPO = "C:/path/to/local/repo"
+uv run python scripts/run_pipeline.py
 ```
 
 LLM 配置会自动读取项目根目录的 `.env` 文件；`.env` 已在 `.gitignore` 中，不要提交真实 key。DeepSeek 的 OpenAI-compatible 配置示例：
